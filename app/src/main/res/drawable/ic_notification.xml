@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Capsule-shaped pill used as the notification small icon (drawn white). -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M4,10 L20,10 A2,2 0 0 1 22,12 A2,2 0 0 1 20,14 L4,14 A2,2 0 0 1 2,12 A2,2 0 0 1 4,10 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFE8633A"
+        android:strokeWidth="1.6"
+        android:pathData="M12,10 L12,14" />
+</vector>

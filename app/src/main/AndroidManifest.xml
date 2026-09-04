@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Medicine reminders are an alarm-style app: we qualify for exact alarms.
+         API 33+: USE_EXACT_ALARM is auto-granted for alarm/calendar apps.
+         API 31-32: SCHEDULE_EXACT_ALARM must be user-granted; we guide the user. -->
+    <uses-permission
+        android:name="android.permission.USE_EXACT_ALARM"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+
+    <!-- Re-register reminders after reboot / clock changes -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:name=".MemPharmaApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MemPharma"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.MemPharma">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Fires when a dose reminder alarm triggers -->
+        <receiver
+            android:name=".data.scheduler.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Handles the notification action buttons: "I took it" / "Mute" -->
+        <receiver
+            android:name=".data.scheduler.ActionReceiver"
+            android:exported="false" />
+
+        <!-- Re-schedules alarms after device reboot -->
+        <receiver
+            android:name=".data.scheduler.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Re-schedules alarms after clock / timezone / date changes (DST etc.) -->
+        <receiver
+            android:name=".data.scheduler.TimeChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Share the CSV history export safely with other apps -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

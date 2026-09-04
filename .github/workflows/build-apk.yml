@@ -1,0 +1,92 @@
+name: Build & publish APK
+
+# Every push to main (and manual runs) builds a signed, installable APK,
+# runs the unit tests, and publishes it as the newest GitHub release so it can
+# be opened/scanned on a phone.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant Gradle execute permission
+        run: chmod +x gradlew
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # versionName/versionCode increase every run so installs update cleanly.
+        run: |
+          ./gradlew assembleRelease \
+            -PversionName="$(date -u +%Y.%m.%d)-r${{ github.run_number }}" \
+            -PversionCode=${{ github.run_number }} \
+            --stacktrace
+
+      - name: Generate install QR code
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python -m pip install --quiet qrcode
+          python - <<'PY'
+          import os
+          import qrcode
+          repo = os.environ["GITHUB_REPOSITORY"]
+          url = f"https://github.com/{repo}/releases/latest/download/app-release.apk"
+          qrcode.make(url).save("mempharma-install.png")
+          PY
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-${{ github.run_number }}
+          name: Latest build (r${{ github.run_number }})
+          body: |
+            Auto-built from the latest push to `main`.
+
+            **Install on your phone**
+            1. Open this release's `app-release.apk` on your Android device — or scan the `mempharma-install.png` QR code with your camera.
+            2. Tap the downloaded file and allow "install unknown apps" the first time.
+            3. Every new build installs as an update over the previous one (stable signing key).
+
+            The APK is signed with the repository's stable release keystore.
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            mempharma-install.png
+          fail_on_unmatched_files: true
+          make_latest: true

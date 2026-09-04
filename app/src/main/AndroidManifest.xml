@@ -20,6 +20,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Full-screen, alarm-style reminder (keeps ringing until actioned) -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <application
         android:name=".MemPharmaApp"
         android:allowBackup="true"
@@ -82,6 +87,29 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Full-screen alarm shown when a dose is due. Launched by the full-screen
+             intent and/or directly by the reminder receiver so it appears on the
+             lock screen and fills the whole display. -->
+        <activity
+            android:name=".ui.alarm.AlarmActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.MemPharma.Alarm" />
+
+        <!-- Foreground service that keeps the alarm ringing / vibrating until the
+             person acts (it must not stop on its own). -->
+        <service
+            android:name=".data.scheduler.AlarmRingerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="medicine reminder alarm" />
+        </service>
     </application>
 
 </manifest>

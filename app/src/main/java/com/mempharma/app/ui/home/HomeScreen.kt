@@ -34,6 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mempharma.app.data.scheduler.AlarmActions
+import com.mempharma.app.data.scheduler.AlarmRingerService
 import com.mempharma.app.data.scheduler.Notifications
 import com.mempharma.app.ui.components.MedicationAvatar
 import com.mempharma.app.ui.components.StatusPill
@@ -73,11 +75,11 @@ fun HomeScreen(
                 onEdit = onEdit,
                 onTake = { occurrence ->
                     viewModel.takeDose(card.med, occurrence)
-                    Notifications.dismiss(context, occurrence)
+                    stopActiveAlarm(context, occurrence)
                 },
                 onMute = { occurrence ->
                     viewModel.muteDose(card.med, occurrence)
-                    Notifications.dismiss(context, occurrence)
+                    stopActiveAlarm(context, occurrence)
                 }
             )
         }
@@ -86,9 +88,17 @@ fun HomeScreen(
     }
 }
 
+/** Stop any currently ringing alarm / full-screen alert after an in-app answer. */
+private fun stopActiveAlarm(context: android.content.Context, occurrence: Long) {
+    Notifications.dismiss(context, occurrence)
+    AlarmRingerService.stop(context)
+    runCatching {
+        context.sendBroadcast(android.content.Intent(AlarmActions.ACTION_ALARM_FINISH))
+    }
+}
+
 @Composable
-private fun Header(now: Long) {
-    val hour = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).hour
+private fun Header(now: Long) {    val hour = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).hour
     val greeting = when {
         hour < 12 -> "Good morning"
         hour < 18 -> "Good afternoon"

@@ -60,16 +60,26 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 ```
 Reminder fires (exact alarm)
    └─ ReminderReceiver
-        ├─ builds high-priority notification (big text, 2 actions)
+        ├─ starts AlarmRingerService (foreground): loops alarm tone + vibrates
+        │     until the person answers — it does not stop on its own
+        ├─ posts an ONGOING full-screen notification (cannot be swiped away)
+        ├─ launches AlarmActivity full-screen (fills device, shows over lock
+        │     screen, turnScreenOn + showWhenLocked)
         ├─ re-arms next occurrence
-        └─ actions target ActionReceiver
+        └─ actions (buttons in the full screen OR the notification) go to:
+             ActionReceiver / AlarmActivity
              ├─ "✓ I took it" → TrackingRepository.recordTaken()
              │     • idempotent per dose (a mute is superseded by a take)
              │     • stock decremented (min 0)
              │     • TAKEN event logged with timestamp
              │     • reminders paused if stock hits 0
+             │     • stops ringer, closes AlarmActivity, dismisses notification
              └─ "Not now" → TrackingRepository.recordMuted()
                    • only this dose; MUTED event logged; stock unchanged
+                   • stops ringer / closes the full screen
+
+If a foreground service start is blocked, ReminderReceiver falls back to posting
+the same full-screen notification (no looping tone in that rare case).
 ```
 
 ## 3. Data model
@@ -121,7 +131,10 @@ Declared in `AndroidManifest.xml`:
 | `USE_EXACT_ALARM` | precise timing | API 33+; auto for medicine/alarm apps |
 | `SCHEDULE_EXACT_ALARM` | precise timing | API 31–32; user-granted; `maxSdkVersion=32` |
 | `RECEIVE_BOOT_COMPLETED` | re-arm after reboot | |
-| `VIBRATE` | reminder buzz | |
+| `VIBRATE` | alarm vibration | |
+| `USE_FULL_SCREEN_INTENT` | full-screen alarm covers the whole display | Android 14+ needs the "Full-screen notifications" toggle (Settings guides the user) |
+| `FOREGROUND_SERVICE` | keep the alarm ringing until answered | required to start a foreground service |
+| `FOREGROUND_SERVICE_SPECIAL_USE` | declare the ringer service type (`specialUse`) | Android 14+ |
 
 No `INTERNET` permission — the app is fully offline.
 

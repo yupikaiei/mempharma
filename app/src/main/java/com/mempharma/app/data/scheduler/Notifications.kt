@@ -12,13 +12,21 @@ import androidx.core.app.NotificationManagerCompat
 import com.mempharma.app.MainActivity
 import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
-import com.mempharma.app.util.TimeFormat
+import com.mempharma.app.ui.alarm.AlarmActivity
 
 /**
- * Builds and shows the dose reminder notifications, including the two action
- * buttons that drive the whole "track locally" flow:
+ * Builds the dose reminder notifications, including the two action buttons that
+ * drive the whole "track locally" flow:
  *   1. "I took it"  -> [ActionReceiver] records TAKEN and decrements stock.
  *   2. "Not now"     -> [ActionReceiver] records MUTED (silences only this dose).
+ *
+ * The alarm variant is what makes it feel like a real alarm:
+ *  - [AlarmActivity] is launched full-screen via [NotificationCompat.setFullScreenIntent]
+ *    so it fills the whole device (and appears on the lock screen).
+ *  - The notification is [NotificationCompat.FLAG_ONGOING_EVENT]/ongoing so it
+ *    cannot simply be swiped away — it stays until the person takes a clear action.
+ *  - Sound/vibration is produced continuously by [AlarmRingerService], not by this
+ *    one-shot notification, so the alarm does not stop on its own.
  *
  * The notification id is derived from the dose occurrence so an action can
  * dismiss exactly the right notification.
@@ -36,18 +44,35 @@ object Notifications {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Alerts when it is time to take your medicine"
-                enableVibration(true)
+                enableVibration(false) // the ringer service handles sound + vibration
+                setSound(null, null)
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }
 
-    fun showReminder(context: Context, med: Medication, occurrence: Long) {
+    private fun actionPendingIntent(context: Context, med: Medication, occurrence: Long, action: String): PendingIntent {
+        val intent = Intent(context, ActionReceiver::class.java)
+            .setAction(action)
+            .putExtra(AlarmActions.EXTRA_MED_ID, med.id)
+            .putExtra(AlarmActions.EXTRA_OCCURRENCE, occurrence)
+        return PendingIntent.getBroadcast(
+            context,
+            notificationId(occurrence),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    /**
+     * The ongoing, full-screen alarm notification shown by the ringer service.
+     * No default sound here — the service loops the alarm tone until actioned.
+     */
+    fun buildAlarmNotification(context: Context, med: Medication, occurrence: Long): Notification {
         ensureChannels(context)
 
-        // Tapping the body opens the app (single top so it just comes forward).
-        val contentIntent = PendingIntent.getActivity(
+        val openApp = PendingIntent.getActivity(
             context,
             0,
             Intent(context, MainActivity::class.java)
@@ -55,46 +80,48 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        fun actionPending(action: String): PendingIntent {
-            val intent = Intent(context, ActionReceiver::class.java)
-                .setAction(action)
+        // Fills the whole screen when the device is locked or the notification
+        // is expanded (subject to Android 14+ "full-screen notifications" setting).
+        val fullScreen = PendingIntent.getActivity(
+            context,
+            1,
+            Intent(context, AlarmActivity::class.java)
                 .putExtra(AlarmActions.EXTRA_MED_ID, med.id)
                 .putExtra(AlarmActions.EXTRA_OCCURRENCE, occurrence)
-            return PendingIntent.getBroadcast(
-                context,
-                notificationId(occurrence),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-        }
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-        val builder = NotificationCompat.Builder(context, AlarmActions.CHANNEL_ID)
+        return NotificationCompat.Builder(context, AlarmActions.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(context.getColor(R.color.ic_launcher_background))
             .setContentTitle("${med.name} — time to take it")
-            .setContentText(reminderBody(med))
+            .setContentText("Take ${med.doseQuantity} ${med.unitLabel}")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("${reminderBody(med)}\n\nScheduled at ${TimeFormat.formatTime(occurrence)}.")
+                    .bigText("Take ${med.doseQuantity} ${med.unitLabel}. Tap \"I took it\" when done, or \"Not now\" to stop this reminder.")
             )
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(contentIntent)
+            .setContentIntent(openApp)
+            .setFullScreenIntent(fullScreen, true)
+            .setOngoing(true) // cannot be swiped away; must take a clear action
             .setAutoCancel(false)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .addAction(0, "✓  I took it", actionPending(AlarmActions.ACTION_TAKEN))
-            .addAction(0, "Not now", actionPending(AlarmActions.ACTION_MUTE))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .addAction(0, "✓  I took it", actionPendingIntent(context, med, occurrence, AlarmActions.ACTION_TAKEN))
+            .addAction(0, "Not now", actionPendingIntent(context, med, occurrence, AlarmActions.ACTION_MUTE))
+            .build()
+    }
 
+    /** Fallback when a foreground service cannot start: post the alarm notification
+     *  without the service (still full-screen via the intent where allowed). */
+    fun notifyAlarm(context: Context, med: Medication, occurrence: Long) {
+        ensureChannels(context)
         NotificationManagerCompat.from(context)
-            .notify(notificationId(occurrence), builder.build())
+            .notify(notificationId(occurrence), buildAlarmNotification(context, med, occurrence))
     }
 
     fun dismiss(context: Context, occurrence: Long) {
         NotificationManagerCompat.from(context).cancel(notificationId(occurrence))
     }
-
-    private fun reminderBody(med: Medication): String =
-        "Take ${med.doseQuantity} ${med.unitLabel}. " +
-            "Tap \"I took it\" when done, or \"Not now\" to mute this reminder."
 }

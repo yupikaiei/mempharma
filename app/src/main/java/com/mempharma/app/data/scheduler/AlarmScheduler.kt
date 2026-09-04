@@ -28,6 +28,9 @@ object AlarmActions {
     const val ACTION_TAKEN = "com.mempharma.action.TAKEN"
     const val ACTION_MUTE = "com.mempharma.action.MUTE"
 
+    /** Broadcast to [com.mempharma.app.ui.alarm.AlarmActivity] telling it to close. */
+    const val ACTION_ALARM_FINISH = "com.mempharma.action.ALARM_FINISH"
+
     const val EXTRA_MED_ID = "extra_med_id"
     const val EXTRA_OCCURRENCE = "extra_occurrence" // epoch millis of the due dose
 

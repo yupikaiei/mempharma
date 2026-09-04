@@ -40,7 +40,13 @@ class ActionReceiver : BroadcastReceiver() {
                         AlarmActions.ACTION_MUTE -> tracking.recordMuted(med, occurrence, now)
                     }
                 }
+                // The alarm is answered: stop the ringing service, clear the
+                // full-screen activity and dismiss the notification.
                 Notifications.dismiss(context, occurrence)
+                AlarmRingerService.stop(context)
+                runCatching {
+                    context.sendBroadcast(Intent(AlarmActions.ACTION_ALARM_FINISH))
+                }
             } finally {
                 pendingResult.finish()
             }

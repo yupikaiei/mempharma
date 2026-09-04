@@ -31,6 +31,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -204,6 +205,25 @@ private fun ReminderSettingsCard(context: Context) {
                     onClick = { openSystemSettings() },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 ) { Text("Allow precise reminders") }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "To make reminders cover the whole screen, switch on " +
+                        "\u201cFull-screen notifications\u201d for MemPharma in system settings.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                OutlinedButton(
+                    onClick = {
+                        val intent = Intent(
+                            Settings.ACTION_APP_NOTIFICATION_SETTINGS,
+                            Uri.parse("package:${context.packageName}")
+                        )
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) { Text("Open notification settings") }
             }
         }
     }

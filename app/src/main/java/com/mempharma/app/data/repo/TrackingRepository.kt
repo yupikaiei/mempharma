@@ -94,6 +94,10 @@ class TrackingRepository @Inject constructor(
         )
     }
 
+    /** Whether this exact dose occurrence already has any resolution. */
+    suspend fun isResolved(medId: Long, occurrence: Long): Boolean =
+        doseEventDao.findResolved(medId, occurrence) != null
+
     /**
      * Add pills back into stock. Logs a [DoseAction.REFILLED] event and re-arms
      * reminders (which were paused when stock hit zero).

@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -52,10 +52,12 @@ jobs:
             --stacktrace
 
       - name: Generate install QR code
+        # Never block the release on the QR code (it is a convenience extra).
+        continue-on-error: true
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          python -m pip install --quiet qrcode
+          python -m pip install --quiet "qrcode[pil]"
           python - <<'PY'
           import os
           import qrcode
@@ -88,5 +90,6 @@ jobs:
           files: |
             app/build/outputs/apk/release/app-release.apk
             mempharma-install.png
-          fail_on_unmatched_files: true
+          # QR is optional; only the APK is required for a release.
+          fail_on_unmatched_files: false
           make_latest: true

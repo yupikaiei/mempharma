@@ -75,11 +75,11 @@ fun HomeScreen(
                 onEdit = onEdit,
                 onTake = { occurrence ->
                     viewModel.takeDose(card.med, occurrence)
-                    stopActiveAlarm(context, occurrence)
+                    stopActiveAlarm(context, occurrence, closeAlarmScreen = true)
                 },
                 onMute = { occurrence ->
                     viewModel.muteDose(card.med, occurrence)
-                    stopActiveAlarm(context, occurrence)
+                    stopActiveAlarm(context, occurrence, closeAlarmScreen = false)
                 }
             )
         }
@@ -88,12 +88,22 @@ fun HomeScreen(
     }
 }
 
-/** Stop any currently ringing alarm / full-screen alert after an in-app answer. */
-private fun stopActiveAlarm(context: android.content.Context, occurrence: Long) {
+/**
+ * Stop any currently ringing alarm after an in-app answer.
+ * @param closeAlarmScreen true only when the dose was confirmed taken — that is
+ * the sole condition under which the full-screen alarm may be dismissed.
+ */
+private fun stopActiveAlarm(
+    context: android.content.Context,
+    occurrence: Long,
+    closeAlarmScreen: Boolean
+) {
     Notifications.dismiss(context, occurrence)
     AlarmRingerService.stop(context)
-    runCatching {
-        context.sendBroadcast(android.content.Intent(AlarmActions.ACTION_ALARM_FINISH))
+    if (closeAlarmScreen) {
+        runCatching {
+            context.sendBroadcast(android.content.Intent(AlarmActions.ACTION_ALARM_FINISH))
+        }
     }
 }
 

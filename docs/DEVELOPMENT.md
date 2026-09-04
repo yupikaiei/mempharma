@@ -76,10 +76,13 @@ Reminder fires (exact alarm)
              │     • stops ringer, closes AlarmActivity, dismisses notification
              └─ "Not now" → TrackingRepository.recordMuted()
                    • only this dose; MUTED event logged; stock unchanged
-                   • stops ringer / closes the full screen
+                   • stops the ringing — but the full-screen alarm STAYS visible
+                     in a quiet, muted state until "I took it" is confirmed
 
-If a foreground service start is blocked, ReminderReceiver falls back to posting
-the same full-screen notification (no looping tone in that rare case).
+The full-screen alarm cannot be dismissed with the back button or "stop" — it
+remains visible until the person confirms the medicine was taken. If a
+foreground service start is blocked, ReminderReceiver falls back to posting the
+same full-screen notification (no looping tone in that rare case).
 ```
 
 ## 3. Data model

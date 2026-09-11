@@ -6,7 +6,9 @@ import com.mempharma.app.data.local.entity.DoseAction
 import com.mempharma.app.data.local.entity.DoseEvent
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.scheduler.AlarmScheduler
+import com.mempharma.app.data.sms.SmsAlertManager
 import com.mempharma.app.domain.DoseEngine
+import com.mempharma.app.domain.SmsTrigger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -22,7 +24,8 @@ class TrackingRepository @Inject constructor(
     private val medicationDao: MedicationDao,
     private val doseEventDao: DoseEventDao,
     private val scheduler: AlarmScheduler,
-    private val activeAlertRepository: ActiveAlertRepository
+    private val activeAlertRepository: ActiveAlertRepository,
+    private val smsAlertManager: SmsAlertManager
 ) {
 
     /** Whole local history/audit log, newest first. */
@@ -98,6 +101,10 @@ class TrackingRepository @Inject constructor(
         )
         // No stock left -> stop reminding until a refill is recorded.
         if (newQuantity <= 0) scheduler.cancelMedication(med)
+
+        // Taking a dose is the main way stock drops, so this is where the
+        // optional "text my family member" refill alert is checked.
+        smsAlertManager.onStockChanged(med.copy(quantity = newQuantity))
         return true
     }
 
@@ -154,6 +161,10 @@ class TrackingRepository @Inject constructor(
             )
         )
         scheduler.scheduleMedication(med.copy(quantity = newQuantity))
+        // Stock is healthy again -> let the next run-low warning be sent.
+        if (SmsTrigger.stageFor(med.copy(quantity = newQuantity)) == null) {
+            smsAlertManager.resetFor(med.id)
+        }
         return newQuantity
     }
 }

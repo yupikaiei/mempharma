@@ -10,6 +10,7 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.provider.ContactsContract
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,11 +24,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,27 +40,34 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.BuildConfig
 import com.mempharma.app.data.settings.ALERT_SILENT
 import com.mempharma.app.data.settings.AlertTone
 import com.mempharma.app.data.settings.SettingsRepository
 import com.mempharma.app.data.settings.parseAlertTone
+import com.mempharma.app.data.sms.SmsTestResult
 import kotlinx.coroutines.delay
 
 private data class FontOption(val label: String, val scale: Float)
@@ -72,6 +83,10 @@ fun SettingsScreen() {
     val viewModel: SettingsViewModel = hiltViewModel()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val alertRingtone by viewModel.alertRingtone.collectAsStateWithLifecycle()
+    val smsEnabled by viewModel.smsEnabled.collectAsStateWithLifecycle()
+    val smsContactName by viewModel.smsContactName.collectAsStateWithLifecycle()
+    val smsContactNumber by viewModel.smsContactNumber.collectAsStateWithLifecycle()
+    val smsTestResult by viewModel.smsTestResult.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
 
@@ -124,6 +139,18 @@ fun SettingsScreen() {
         AlertSoundCard(
             selected = alertRingtone,
             onSelected = viewModel::setAlertRingtone
+        )
+
+        // --- Refill texts to a family member ---
+        SmsAlertCard(
+            enabled = smsEnabled,
+            contactName = smsContactName,
+            contactNumber = smsContactNumber,
+            testResult = smsTestResult,
+            onEnabledChange = viewModel::setSmsEnabled,
+            onContactPicked = viewModel::setSmsContact,
+            onClearContact = viewModel::clearSmsContact,
+            onSendTest = viewModel::sendTestSms
         )
 
         // --- About ---
@@ -406,3 +433,241 @@ private fun playPreview(context: Context, tone: AlertTone): Ringtone? {
         }
     }.getOrNull()
 }
+
+/**
+ * "Text a family member" settings: choose a contact, allow sending texts, and
+ * try it out. The chosen contact is told when a medicine is almost finished or
+ * has run out (the level itself is set per medicine on the Add/Edit screen).
+ */
+@Composable
+private fun SmsAlertCard(
+    enabled: Boolean,
+    contactName: String,
+    contactNumber: String,
+    testResult: SmsTestResult?,
+    onEnabledChange: (Boolean) -> Unit,
+    onContactPicked: (String, String) -> Unit,
+    onClearContact: () -> Unit,
+    onSendTest: () -> Unit
+) {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
+
+    // Re-check on every return to the screen (e.g. after changing it in system settings).
+    var permissionGranted by remember { mutableStateOf(hasSmsPermission(context)) }
+    LifecycleResumeEffect(Unit) {
+        permissionGranted = hasSmsPermission(context)
+        onPauseOrDispose { }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> permissionGranted = granted }
+
+    val contactPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val row = result.data?.data ?: return@rememberLauncherForActivityResult
+        readPickedPhoneNumber(context, row)?.let { (name, number) -> onContactPicked(name, number) }
+    }
+
+    fun chooseContact() {
+        // The system picker returns one contact's phone row; Android grants
+        // temporary access to just that row, so READ_CONTACTS is not needed.
+        val intent = Intent(Intent.ACTION_PICK)
+            .setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE)
+        runCatching { contactPicker.launch(intent) }
+    }
+
+    var typingNumber by remember { mutableStateOf(false) }
+    var typedNumber by remember { mutableStateOf("") }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Person, contentDescription = null, tint = scheme.primary)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Text a family member",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "We can text someone when a medicine is almost finished or has run out, " +
+                    "so they can pick up a refill. We repeat every 3 days until you record a refill.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "Send refill texts",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+            }
+
+            Spacer(Modifier.height(8.dp))
+            if (permissionGranted) {
+                Text("Sending texts: allowed ✓", style = MaterialTheme.typography.bodyLarge)
+            } else {
+                Text(
+                    "MemPharma needs permission to send texts. Nothing is sent until you allow it.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Button(
+                    onClick = { permissionLauncher.launch(Manifest.permission.SEND_SMS) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .height(56.dp)
+                ) { Text("Allow sending texts") }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            if (contactNumber.isNotBlank()) {
+                Text(
+                    "Sending to:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant
+                )
+                Text(
+                    text = if (contactName.isBlank()) contactNumber else "$contactName\n$contactNumber",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Button(
+                        onClick = { chooseContact() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                    ) { Text("Change") }
+                    OutlinedButton(
+                        onClick = onClearContact,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                    ) { Text("Remove") }
+                }
+            } else {
+                Button(
+                    onClick = { chooseContact() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) { Text("Choose contact") }
+                TextButton(
+                    onClick = { typingNumber = !typingNumber },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (typingNumber) "Cancel" else "Type a number instead") }
+            }
+
+            if (typingNumber && contactNumber.isBlank()) {
+                OutlinedTextField(
+                    value = typedNumber,
+                    onValueChange = { typedNumber = it.take(20) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    placeholder = {
+                        Text("e.g. 07700 900123", style = MaterialTheme.typography.bodyLarge)
+                    }
+                )
+                Button(
+                    onClick = {
+                        onContactPicked("", typedNumber.trim())
+                        typingNumber = false
+                        typedNumber = ""
+                    },
+                    enabled = typedNumber.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .height(56.dp)
+                ) { Text("Save number") }
+            }
+
+            if (contactNumber.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "What a medicine that is almost finished will say:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant
+                )
+                Text(
+                    "MemPharma: Blood pressure pill is almost finished — only 3 pill(s) left. " +
+                        "Please arrange a refill.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                OutlinedButton(
+                    onClick = onSendTest,
+                    enabled = permissionGranted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .height(56.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Send a test text")
+                }
+                testResult?.let { result ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = when (result) {
+                            SmsTestResult.Sent -> "Test text sent ✓"
+                            SmsTestResult.NoContact -> "Choose a contact first."
+                            SmsTestResult.NoPermission -> "Allow sending texts first."
+                            SmsTestResult.Failed ->
+                                "The phone could not send the text. Check the signal and try again."
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (result == SmsTestResult.Sent) scheme.primary else scheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Whether MemPharma may send texts right now. */
+private fun hasSmsPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) ==
+        PackageManager.PERMISSION_GRANTED
+
+/**
+ * Reads the name and number from the single contact row the system picker
+ * returned. Android grants temporary access to that one row, which is why no
+ * READ_CONTACTS permission is needed.
+ */
+private fun readPickedPhoneNumber(context: Context, row: Uri): Pair<String, String>? =
+    runCatching {
+        context.contentResolver.query(row, PICK_PROJECTION, null, null, null)?.use { cursor ->
+            if (!cursor.moveToFirst()) return@use null
+            val nameIdx = cursor.getColumnIndex(PICK_PROJECTION[0])
+            val numberIdx = cursor.getColumnIndex(PICK_PROJECTION[1])
+            val name = if (nameIdx >= 0) cursor.getString(nameIdx).orEmpty().trim() else ""
+            val number = if (numberIdx >= 0) cursor.getString(numberIdx).orEmpty().trim() else ""
+            if (number.isBlank()) null else name to number
+        }
+    }.getOrNull()
+
+private val PICK_PROJECTION = arrayOf(
+    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+    ContactsContract.CommonDataKinds.Phone.NUMBER
+)

@@ -11,7 +11,7 @@ All Gradle commands use the wrapper (Gradle 8.11.1) and expect **JDK 17** and an
 export JAVA_HOME=/path/to/jdk-17
 export ANDROID_HOME=$HOME/android-sdk        # or local.properties sdk.dir
 ./gradlew :app:assembleDebug                 # fast debug build
-./gradlew :app:testDebugUnitTest             # JVM unit tests (16 tests)
+./gradlew :app:testDebugUnitTest             # JVM unit tests (30 tests)
 ./gradlew :app:assembleRelease               # R8/minified release
 ./gradlew :app:lintDebug                     # Android Lint (optional)
 ```
@@ -40,10 +40,44 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 - **`data/settings/SettingsRepository`** — DataStore-backed app settings: the global font-scale
   and the chosen alert sound (`AlertTone`). Read by `AlarmRingerService` so reminders ring with
   the tone the person picked.
+- **`data/sms/SmsAlertManager`** — the optional *"text a family member"* refill alerts. The
+  decision rules are pure (`domain/SmsTrigger`), the chosen contact and send-history live in a
+  DataStore (`SmsAlertRepository`, so no Room migration), and sending is triggered both straight
+  after a dose is recorded and by a daily `SmsAlertWorker`.
 - **BroadcastReceivers** are system-instantiated, so they reach Hilt through
   `AppGraph.from(context)` (`@EntryPoint`), not constructor injection.
 - **Screens** each own a `@HiltViewModel`; navigation is a single `NavHost`
   with a large bottom `NavigationBar` (`Today`, `Medicines`, `History`, `Settings`).
+
+### Automated refill texts (optional)
+
+The person can pick **one contact from their contacts** in `Settings → Text a family member`.
+MemPharma then texts that person when a medicine is running low, and again if it runs out.
+
+```
+stock drops (dose recorded)              daily SmsAlertWorker
+      └─► TrackingRepository.recordTaken         └─► SmsAlertManager.evaluateAll()
+                    └────────────► SmsAlertManager ────────────┘
+                                       │  pure rules: domain/SmsTrigger
+                                       ├─ SmsAlertRepository (contact + what was already sent)
+                                       └─ SmsSender (SmsManager, multipart)
+```
+
+- **Per-medicine level**: the Add/Edit medicine screen sets `lowStockThreshold`
+  ("text my family member when this many are left"). A medicine that is switched off is ignored.
+- **Escalation**: crossing into `LOW` sends once; reaching `OUT` sends again immediately.
+- **Repeat**: every 3 days while the medicine stays low/empty (`SmsTrigger.REPEAT_INTERVAL_MILLIS`).
+- **Reset**: recording a refill (`TrackingRepository.refill`) clears the record, so the next
+  run-low episode sends again. Deleting a medicine clears it too.
+- **No duplicates**: a `Mutex` in `SmsAlertManager` serialises the event path and the worker; the
+  3-day rule is re-checked against the DataStore record before every send.
+- **Added already low?** `MedicationRepository.create` seeds the record *without* sending, so
+  setting the app up never fires a text.
+- **Contact picking needs no `READ_CONTACTS`**: `Intent.ACTION_PICK` with
+  `CommonDataKinds.Phone.CONTENT_TYPE` returns a single phone row that Android grants temporary
+  read access to. A "Type a number instead" fallback covers the rare device that refuses it.
+- **If `SEND_SMS` is missing** nothing is recorded (so the text goes out once permission is
+  granted) and a quiet, self-replacing notification explains what to do.
 
 ### Scheduling design (important)
 
@@ -156,8 +190,11 @@ Declared in `AndroidManifest.xml`:
 | `USE_FULL_SCREEN_INTENT` | full-screen alarm covers the whole display | Android 14+ needs the "Full-screen notifications" toggle (Settings guides the user) |
 | `FOREGROUND_SERVICE` | keep the alarm ringing until answered | required to start a foreground service |
 | `FOREGROUND_SERVICE_SPECIAL_USE` | declare the ringer service type (`specialUse`) | Android 14+ |
+| `SEND_SMS` | optionally text the chosen family member when a medicine is running out | runtime-granted; only used after the person turns the feature on |
+| `ACCESS_NETWORK_STATE` | added by `androidx.work`'s own manifest (not by app code) | normal permission; the app itself still never talks to the network |
 
-No `INTERNET` permission — the app is fully offline.
+No `INTERNET` permission — the app is fully offline. Refill texts never leave the phone except
+as an SMS to the one contact the person chose.
 
 ## 6. Release pipeline (GitHub → phone)
 
@@ -195,6 +232,10 @@ allow "install unknown apps" once. Subsequent builds update in place.
 ## 7. Testing & QA checklist
 
 - [ ] `./gradlew :app:testDebugUnitTest` — green.
+- [ ] Settings → Text a family member: choose a contact, allow sending texts, **Send a test text**.
+- [ ] Edit a medicine's "text my family member when this many are left" and take doses until it
+      reaches that level → one text; take one more to 0 → a second text; refill → no repeat for
+      3 days.
 - [ ] Add a medicine with a time 2 minutes ahead; background the app.
 - [ ] Lock screen notification appears → tap **✓ I took it**:
       stock decremented, TAKEN logged, notification gone.

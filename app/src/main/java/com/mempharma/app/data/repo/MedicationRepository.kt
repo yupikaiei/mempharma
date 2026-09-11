@@ -4,6 +4,7 @@ import com.mempharma.app.data.local.dao.DoseEventDao
 import com.mempharma.app.data.local.dao.MedicationDao
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.scheduler.AlarmScheduler
+import com.mempharma.app.data.sms.SmsAlertManager
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,7 +19,8 @@ class MedicationRepository @Inject constructor(
     private val medicationDao: MedicationDao,
     private val doseEventDao: DoseEventDao,
     private val scheduler: AlarmScheduler,
-    private val activeAlertRepository: ActiveAlertRepository
+    private val activeAlertRepository: ActiveAlertRepository,
+    private val smsAlertManager: SmsAlertManager
 ) {
 
     val all: Flow<List<Medication>> = medicationDao.observeAll()
@@ -35,6 +37,9 @@ class MedicationRepository @Inject constructor(
         require(medication.times.isNotEmpty()) { "At least one dose time is required" }
         val id = medicationDao.insert(medication.copy(id = 0L))
         scheduler.scheduleMedication(medication.copy(id = id))
+        // If it is added already low or empty, remember that silently so setting
+        // the app up does not immediately text the family member.
+        smsAlertManager.seedWithoutSending(medication.copy(id = id))
         return id
     }
 
@@ -48,6 +53,7 @@ class MedicationRepository @Inject constructor(
         val med = medicationDao.get(id) ?: return
         doseEventDao.deleteForMedication(id) // remove this medicine's audit trail too
         activeAlertRepository.removeForMedication(id) // drop any pending alert for it
+        smsAlertManager.resetFor(id) // forget what the family member was told
         medicationDao.delete(id)
         scheduler.cancelMedication(med)
     }

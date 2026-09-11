@@ -5,6 +5,7 @@ import com.mempharma.app.data.repo.MedicationRepository
 import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.data.scheduler.AlarmScheduler
 import com.mempharma.app.data.settings.SettingsRepository
+import com.mempharma.app.data.sms.SmsAlertManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -21,6 +22,7 @@ interface AppGraphEntryPoint {
     fun trackingRepository(): TrackingRepository
     fun alarmScheduler(): AlarmScheduler
     fun settingsRepository(): SettingsRepository
+    fun smsAlertManager(): SmsAlertManager
 }
 
 object AppGraph {

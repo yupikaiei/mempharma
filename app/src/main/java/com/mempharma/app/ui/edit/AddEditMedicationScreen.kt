@@ -160,6 +160,25 @@ fun AddEditMedicationScreen(
         )
         Spacer(Modifier.height(20.dp))
 
+        // 4b. Refill warning level (used by the optional "text my family member" alerts).
+        SectionLabel("Text my family member when this many are left")
+        OutlinedTextField(
+            value = state.lowStockThreshold,
+            onValueChange = viewModel::updateLowStockThreshold,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "A text is also sent if the medicine runs out completely. " +
+                "This only happens when text alerts are turned on in Settings.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(20.dp))
+
         // 5. Colour
         SectionLabel("Choose a colour for this medicine")
         MedPalette.listColors().chunked(4).forEach { rowColors ->

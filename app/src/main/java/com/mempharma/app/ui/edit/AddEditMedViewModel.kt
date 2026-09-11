@@ -20,6 +20,7 @@ data class AddEditState(
     val doseQuantity: String = "1",
     val unitLabel: String = "pill(s)",
     val quantity: String = "30",
+    val lowStockThreshold: String = "3",
     val colorIndex: Int = 0,
     val selectedTimes: Set<Int> = emptySet(), // minutes of day
     val isEditing: Boolean = false,
@@ -40,6 +41,9 @@ object TimePresets {
         Preset("Night", 21 * 60 + 30)
     )
 }
+
+/** Used when the refill-warning box is left empty or cannot be read. */
+private const val DEFAULT_LOW_STOCK_THRESHOLD = 3
 
 @HiltViewModel
 class AddEditMedViewModel @Inject constructor(
@@ -69,6 +73,7 @@ class AddEditMedViewModel @Inject constructor(
                     doseQuantity = med.doseQuantity.toString(),
                     unitLabel = med.unitLabel,
                     quantity = med.quantity.toString(),
+                    lowStockThreshold = med.lowStockThreshold.toString(),
                     colorIndex = med.colorIndex,
                     selectedTimes = med.times.map { t -> t.hour * 60 + t.minute }.toSet(),
                     isEditing = true,
@@ -82,6 +87,10 @@ class AddEditMedViewModel @Inject constructor(
     fun updateDoseQuantity(v: String) = _state.update { it.copy(doseQuantity = v.filter(Char::isDigit).take(3), error = null) }
     fun updateUnit(v: String) = _state.update { it.copy(unitLabel = v, error = null) }
     fun updateQuantity(v: String) = _state.update { it.copy(quantity = v.filter(Char::isDigit).take(6), error = null) }
+
+    fun updateLowStockThreshold(v: String) =
+        _state.update { it.copy(lowStockThreshold = v.filter(Char::isDigit).take(3), error = null) }
+
     fun updateColor(i: Int) = _state.update { it.copy(colorIndex = i) }
 
     fun toggleTime(minuteOfDay: Int) = _state.update { s ->
@@ -97,6 +106,9 @@ class AddEditMedViewModel @Inject constructor(
         val name = s.name.trim()
         val doseQty = s.doseQuantity.toIntOrNull()
         val qty = s.quantity.toIntOrNull()
+        // Friendly fallback: a blank / unreadable level just means "warn me at 3".
+        val lowThreshold = (s.lowStockThreshold.toIntOrNull() ?: DEFAULT_LOW_STOCK_THRESHOLD)
+            .coerceAtLeast(1)
 
         val error = when {
             name.isEmpty() -> "Please type the medicine name."
@@ -130,7 +142,7 @@ class AddEditMedViewModel @Inject constructor(
                     LocalDate.now().toEpochDay()
                 },
                 timesCsv = times.joinToString(",") { it.toString() },
-                lowStockThreshold = 3
+                lowStockThreshold = lowThreshold
             )
             if (medId > 0) repository.update(med) else repository.create(med)
             _state.update { it.copy(loading = false, finished = true) }

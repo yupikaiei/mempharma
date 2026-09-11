@@ -15,6 +15,11 @@
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
 
+    <!-- Optional "text my family member" refill alerts. Declared but only used
+         once the person turns the feature on and grants it at runtime. This is
+         a sensitive permission, so it is never requested on its own. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
     <!-- Re-register reminders after reboot / clock changes -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />

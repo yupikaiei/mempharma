@@ -11,7 +11,7 @@ All Gradle commands use the wrapper (Gradle 8.11.1) and expect **JDK 17** and an
 export JAVA_HOME=/path/to/jdk-17
 export ANDROID_HOME=$HOME/android-sdk        # or local.properties sdk.dir
 ./gradlew :app:assembleDebug                 # fast debug build
-./gradlew :app:testDebugUnitTest             # JVM unit tests (9 tests)
+./gradlew :app:testDebugUnitTest             # JVM unit tests (16 tests)
 ./gradlew :app:assembleRelease               # R8/minified release
 ./gradlew :app:lintDebug                     # Android Lint (optional)
 ```
@@ -33,7 +33,13 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 - **`data/repo/MedicationRepository`** — CRUD + keeps alarms in sync with the database.
 - **`data/repo/TrackingRepository`** — the single funnel for real-world actions
   (taken / muted / missed / refill). Notification buttons **and** in-app buttons both call it,
-  so behaviour is identical everywhere.
+  so behaviour is identical everywhere. It also owns the live-alert queue: an alarm that has
+  rung and not yet been taken stays pending until `recordTaken` clears it.
+- **`data/repo/ActiveAlertRepository`** — persists that live-alert queue in DataStore
+  (`mempharma_active_alerts`), deliberately outside Room so adding it needs no schema migration.
+- **`data/settings/SettingsRepository`** — DataStore-backed app settings: the global font-scale
+  and the chosen alert sound (`AlertTone`). Read by `AlarmRingerService` so reminders ring with
+  the tone the person picked.
 - **BroadcastReceivers** are system-instantiated, so they reach Hilt through
   `AppGraph.from(context)` (`@EntryPoint`), not constructor injection.
 - **Screens** each own a `@HiltViewModel`; navigation is a single `NavHost`
@@ -60,8 +66,10 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 ```
 Reminder fires (exact alarm)
    └─ ReminderReceiver
-        ├─ starts AlarmRingerService (foreground): loops alarm tone + vibrates
-        │     until the person answers — it does not stop on its own
+        ├─ records the live alert in ActiveAlertRepository (DataStore)
+        ├─ starts AlarmRingerService (foreground): loops the chosen alert tone
+        │     (default: system alarm; Silent = vibrate only) + vibrates until
+        │     the person answers — it does not stop on its own
         ├─ posts an ONGOING full-screen notification (cannot be swiped away)
         ├─ launches AlarmActivity full-screen (fills device, shows over lock
         │     screen, turnScreenOn + showWhenLocked)
@@ -73,16 +81,23 @@ Reminder fires (exact alarm)
              │     • stock decremented (min 0)
              │     • TAKEN event logged with timestamp
              │     • reminders paused if stock hits 0
-             │     • stops ringer, closes AlarmActivity, dismisses notification
+             │     • clears the live alert
+             │     • stops ringer, dismisses notification, and either shows the
+             │       next pending alert or closes AlarmActivity
              └─ "Not now" → TrackingRepository.recordMuted()
                    • only this dose; MUTED event logged; stock unchanged
-                   • stops the ringing — but the full-screen alarm STAYS visible
-                     in a quiet, muted state until "I took it" is confirmed
+                   • stops the ringing — but the alert STAYS pending and the
+                     full-screen alarm remains visible in a quiet, muted state
+                     until "I took it" is confirmed
 
-The full-screen alarm cannot be dismissed with the back button or "stop" — it
-remains visible until the person confirms the medicine was taken. If a
-foreground service start is blocked, ReminderReceiver falls back to posting the
-same full-screen notification (no looping tone in that rare case).
+The full-screen alarm cannot be dismissed with the back button or "stop". It is
+persisted, so it is brought back to the front whenever the app is reopened or the
+notification is tapped — even after the process was killed, a reboot, or the user
+pressing Home — until the dose is confirmed taken. Muting does not clear it: a
+muted-but-untaken alert comes back in its calm state (no tone). Several pending
+alerts are chained, oldest first: confirming one shows the next. If a foreground
+service start is blocked, ReminderReceiver falls back to posting the same
+full-screen notification (no looping tone in that rare case).
 ```
 
 ## 3. Data model
@@ -119,6 +134,9 @@ version + write a real `Migration` in `AppModule` before any schema change ships
 - Type scale already starts larger than Material defaults.
 - **Settings → Text size** multiplies the whole UI via a global `fontScale` (CompositionLocal
   density override) — no per-widget work needed.
+- **Settings → Alert sound** lets the person choose the reminder tone from the device's own
+  alarms, ringtones and notifications (plus **Default** and **Silent**), preview it, and have it
+  persisted for the looping ringer service. Silent still vibrates and shows the full-screen alert.
 - 48dp+ touch targets, big labelled bottom navigation, high-contrast colour roles.
 - One primary action per medicine card: **"✓ I took it"**; **"Not now"** is the quiet alternative.
 - TalkBack: all icons have content descriptions / text labels; status pills carry text.
@@ -180,7 +198,17 @@ allow "install unknown apps" once. Subsequent builds update in place.
 - [ ] Add a medicine with a time 2 minutes ahead; background the app.
 - [ ] Lock screen notification appears → tap **✓ I took it**:
       stock decremented, TAKEN logged, notification gone.
-- [ ] Repeat with **Not now**: MUTED logged, stock unchanged, no re-nag.
+- [ ] Press **Home** during an active alarm, then reopen the app → the alarm
+      screen comes back until **✓ I took it** is pressed.
+- [ ] Tap the notification body → goes straight to the alarm screen (not the app).
+- [ ] Force-stop the app while an alarm is pending, then relaunch → alarm returns.
+- [ ] Repeat with **Not now**: MUTED logged, stock unchanged, ringing stops, and the
+      alert returns (muted, silent) on reopen until taken.
+- [ ] Two medicines due at the same time → confirming the first shows the second.
+- [ ] Settings → Alert sound → choose a tone and press **Preview** (it stops on its own),
+      then trigger a reminder → the chosen tone loops.
+- [ ] Choose **Silent** → the reminder vibrates and shows the full screen with no tone.
+- [ ] Choose **Default** → the system alarm tone plays. Reopen the app → the choice persisted.
 - [ ] Reboot the device → a future reminder still fires (`BootReceiver`).
 - [ ] Change the system time/timezone → alarms follow (`TimeChangeReceiver`).
 - [ ] Deny exact alarms → reminders still appear (inexact) + Settings guidance shows.

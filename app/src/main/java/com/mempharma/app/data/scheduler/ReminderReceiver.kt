@@ -13,9 +13,10 @@ import kotlinx.coroutines.launch
 /**
  * Fires when an exact-alarm reminder is due. Turns the reminder into a real
  * alarm:
- *  1. starts [AlarmRingerService] so the tone/vibration loops until actioned,
- *  2. opens the full-screen [AlarmActivity] (fills the device / lock screen),
- *  3. re-arms the next occurrence for this dose time tomorrow.
+ *  1. records the live alert (so the screen keeps reappearing until answered),
+ *  2. starts [AlarmRingerService] so the tone/vibration loops until actioned,
+ *  3. opens the full-screen [AlarmActivity] (fills the device / lock screen),
+ *  4. re-arms the next occurrence for this dose time tomorrow.
  */
 class ReminderReceiver : BroadcastReceiver() {
 
@@ -41,6 +42,10 @@ class ReminderReceiver : BroadcastReceiver() {
                 // Edge case: dose already taken/muted from the app before this alarm
                 // (e.g. delayed delivery) — do not ring for a resolved dose.
                 if (tracking.isResolved(med.id, occurrence)) return@launch
+
+                // Remember this live alert so the full-screen alarm is shown again
+                // whenever the app is reopened, until the dose is confirmed taken.
+                tracking.registerAlert(med, occurrence)
 
                 // 1. Looping ringer (falls back to a plain full-screen notification
                 //    if Android blocks a background foreground-service start).

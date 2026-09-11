@@ -3,6 +3,7 @@ package com.mempharma.app.data.settings
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -14,8 +15,9 @@ private val Context.dataStore by preferencesDataStore(name = "mempharma_settings
 
 /**
  * Lightweight app settings persisted with Jetpack DataStore.
- * Currently used for the global accessibility font-scale so elderly users can
- * make every screen bigger without leaving the app's design system.
+ * Holds the global accessibility font-scale so elderly users can make every
+ * screen bigger without leaving the app's design system, and the alert sound
+ * chosen from the device's own tones (see [AlertTone]).
  */
 @Singleton
 class SettingsRepository @Inject constructor(
@@ -24,6 +26,7 @@ class SettingsRepository @Inject constructor(
 
     companion object {
         private val KEY_FONT_SCALE = floatPreferencesKey("font_scale")
+        private val KEY_ALERT_RINGTONE = stringPreferencesKey("alert_ringtone")
         const val FONT_STANDARD = 1.0f
         const val FONT_LARGE = 1.2f
         const val FONT_EXTRA_LARGE = 1.45f
@@ -32,7 +35,18 @@ class SettingsRepository @Inject constructor(
     val fontScale: Flow<Float> = context.dataStore.data
         .map { it[KEY_FONT_SCALE] ?: FONT_STANDARD }
 
+    /**
+     * Raw alert-sound choice: blank for the system default alarm, [ALERT_SILENT]
+     * for no tone, otherwise the picked sound's URI. Feed it to [parseAlertTone].
+     */
+    val alertRingtone: Flow<String> = context.dataStore.data
+        .map { it[KEY_ALERT_RINGTONE] ?: "" }
+
     suspend fun setFontScale(scale: Float) {
         context.dataStore.edit { it[KEY_FONT_SCALE] = scale }
+    }
+
+    suspend fun setAlertRingtone(value: String) {
+        context.dataStore.edit { it[KEY_ALERT_RINGTONE] = value }
     }
 }

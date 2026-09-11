@@ -9,7 +9,6 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.mempharma.app.MainActivity
 import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.ui.alarm.AlarmActivity
@@ -72,11 +71,16 @@ object Notifications {
     fun buildAlarmNotification(context: Context, med: Medication, occurrence: Long): Notification {
         ensureChannels(context)
 
-        val openApp = PendingIntent.getActivity(
+        // Tapping the notification body goes straight to the full-screen alert, so
+        // the alarm cannot be left behind by opening the app normally — only
+        // "✓ I took it" ends it.
+        val openAlarm = PendingIntent.getActivity(
             context,
             0,
-            Intent(context, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            Intent(context, AlarmActivity::class.java)
+                .putExtra(AlarmActions.EXTRA_MED_ID, med.id)
+                .putExtra(AlarmActions.EXTRA_OCCURRENCE, occurrence)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -103,7 +107,7 @@ object Notifications {
             )
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(openApp)
+            .setContentIntent(openAlarm)
             .setFullScreenIntent(fullScreen, true)
             .setOngoing(true) // cannot be swiped away; must take a clear action
             .setAutoCancel(false)

@@ -17,7 +17,8 @@ import javax.inject.Singleton
 class MedicationRepository @Inject constructor(
     private val medicationDao: MedicationDao,
     private val doseEventDao: DoseEventDao,
-    private val scheduler: AlarmScheduler
+    private val scheduler: AlarmScheduler,
+    private val activeAlertRepository: ActiveAlertRepository
 ) {
 
     val all: Flow<List<Medication>> = medicationDao.observeAll()
@@ -46,6 +47,7 @@ class MedicationRepository @Inject constructor(
     suspend fun delete(id: Long) {
         val med = medicationDao.get(id) ?: return
         doseEventDao.deleteForMedication(id) // remove this medicine's audit trail too
+        activeAlertRepository.removeForMedication(id) // drop any pending alert for it
         medicationDao.delete(id)
         scheduler.cancelMedication(med)
     }

@@ -26,6 +26,13 @@ interface DoseEventDao {
     )
     suspend fun findResolved(medId: Long, occurrence: Long): DoseEvent?
 
+    /** True if this exact dose occurrence was muted (silenced but not taken). */
+    @Query(
+        "SELECT * FROM dose_events WHERE medicationId = :medId " +
+            "AND scheduledForEpochMillis = :occurrence AND action = 'MUTED' LIMIT 1"
+    )
+    suspend fun findMuted(medId: Long, occurrence: Long): DoseEvent?
+
     /** Removes any earlier resolution for an occurrence (used when a mute is overridden by taken). */
     @Query("DELETE FROM dose_events WHERE medicationId = :medId AND scheduledForEpochMillis = :occurrence")
     suspend fun deleteForOccurrence(medId: Long, occurrence: Long)

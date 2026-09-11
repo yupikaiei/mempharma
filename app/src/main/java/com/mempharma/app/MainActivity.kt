@@ -1,6 +1,7 @@
 package com.mempharma.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -25,8 +26,11 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.mempharma.app.data.repo.TrackingRepository
+import com.mempharma.app.data.scheduler.AlarmActions
 import com.mempharma.app.data.scheduler.AlarmScheduler
 import com.mempharma.app.data.settings.SettingsRepository
+import com.mempharma.app.ui.alarm.AlarmActivity
 import com.mempharma.app.ui.navigation.MemPharmaApp
 import com.mempharma.app.ui.theme.MemPharmaTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -41,6 +45,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var settings: SettingsRepository
+
+    @Inject
+    lateinit var tracking: TrackingRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +71,26 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Bring the full-screen alarm back whenever the app returns to the
+     * foreground while a dose alarm is still waiting for an answer. This is what
+     * makes the alert survive the user pressing Home, switching apps, or the
+     * process being killed and restarted — it stays until "✓ I took it" is
+     * pressed (or the medicine is removed).
+     */
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            val alert = tracking.pendingAlert() ?: return@launch
+            startActivity(
+                Intent(this@MainActivity, AlarmActivity::class.java)
+                    .putExtra(AlarmActions.EXTRA_MED_ID, alert.medicationId)
+                    .putExtra(AlarmActions.EXTRA_OCCURRENCE, alert.occurrence)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
     }
 }

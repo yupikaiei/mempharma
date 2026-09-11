@@ -21,7 +21,18 @@ class SettingsViewModel @Inject constructor(
         initialValue = SettingsRepository.FONT_STANDARD
     )
 
+    /** Raw alert-sound choice; blank means the system default alarm. */
+    val alertRingtone: StateFlow<String> = settingsRepository.alertRingtone.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ""
+    )
+
     fun setFontScale(scale: Float) {
         viewModelScope.launch { settingsRepository.setFontScale(scale) }
+    }
+
+    fun setAlertRingtone(value: String) {
+        viewModelScope.launch { settingsRepository.setAlertRingtone(value) }
     }
 }

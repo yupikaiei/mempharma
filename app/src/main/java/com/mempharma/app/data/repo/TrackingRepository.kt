@@ -21,7 +21,8 @@ import javax.inject.Singleton
 class TrackingRepository @Inject constructor(
     private val medicationDao: MedicationDao,
     private val doseEventDao: DoseEventDao,
-    private val scheduler: AlarmScheduler
+    private val scheduler: AlarmScheduler,
+    private val activeAlertRepository: ActiveAlertRepository
 ) {
 
     /** Whole local history/audit log, newest first. */
@@ -34,11 +35,49 @@ class TrackingRepository @Inject constructor(
         doseEventDao.observeForMedication(medicationId)
 
     /**
+     * Remember that an alarm actually rang for this dose. From now on the
+     * full-screen alert is re-shown whenever the app is (re)opened, until the
+     * dose is confirmed taken. Only real alarms are registered — overdue doses
+     * that never rang are deliberately not turned into alerts.
+     */
+    suspend fun registerAlert(med: Medication, occurrence: Long) {
+        activeAlertRepository.add(ActiveAlert(med.id, occurrence))
+    }
+
+    /**
+     * The oldest alert that still needs an answer, or null when nothing is
+     * pending. Muted doses still count (mute only silences the ringing — the
+     * alert waits until taken). Entries whose medicine disappeared, was turned
+     * off, ran out of stock, or was already taken elsewhere are dropped so the
+     * queue cannot grow stale.
+     */
+    suspend fun pendingAlert(): ActiveAlert? {
+        for (alert in activeAlertRepository.pending.first()) {
+            val med = medicationDao.get(alert.medicationId)
+            val stillRelevant = med != null &&
+                med.active &&
+                !med.isOut &&
+                doseEventDao.findTaken(med.id, alert.occurrence) == null
+            if (stillRelevant) return alert
+            activeAlertRepository.remove(alert)
+        }
+        return null
+    }
+
+    /** Whether this exact dose occurrence was silenced (muted but not taken). */
+    suspend fun isMuted(medId: Long, occurrence: Long): Boolean =
+        doseEventDao.findMuted(medId, occurrence) != null
+
+    /**
      * "I took it": idempotent per dose occurrence. Decrements stock by the dose
      * size and logs a [DoseAction.TAKEN] event. Returns false if that dose was
      * already recorded as taken.
      */
     suspend fun recordTaken(med: Medication, occurrence: Long, at: Long): Boolean {
+        // Clear the persistent alert no matter which surface confirmed the dose
+        // (alarm screen, notification button, or Today screen).
+        activeAlertRepository.remove(ActiveAlert(med.id, occurrence))
+
         if (doseEventDao.findTaken(med.id, occurrence) != null) return false
 
         // If the user first muted then takes it later, the mute is superseded.

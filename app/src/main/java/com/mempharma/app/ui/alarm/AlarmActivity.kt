@@ -34,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -58,11 +59,16 @@ import kotlinx.coroutines.launch
  *
  * Behaviour contract: **the screen stays visible until the person confirms they
  * took the medicine by pressing "✓ I took it".**
+ *  - The alert is persisted, so it is brought back to the front whenever the app
+ *    is reopened or the notification is tapped — even after the process was
+ *    killed — until the dose is taken.
  *  - "Not now" only silences the ringing (logs a MUTE); it does NOT close the
- *    screen — the alarm keeps waiting in a calm, muted state.
+ *    screen and does not clear the alert — it comes back in the same calm, muted
+ *    state until the dose is confirmed.
  *  - The back button is disabled while this screen is up.
  *  - Only a TAKEN confirmation (here, from the notification action, or from the
- *    Today screen) records the dose and dismisses this activity.
+ *    Today screen) records the dose and dismisses this activity. If more doses
+ *    are still waiting, the next alert is shown straight away.
  */
 @AndroidEntryPoint
 class AlarmActivity : ComponentActivity() {
@@ -73,16 +79,16 @@ class AlarmActivity : ComponentActivity() {
     @Inject
     lateinit var trackingRepository: TrackingRepository
 
-    private var medId: Long = -1L
-    private var occurrence: Long = -1L
+    private var medId by mutableStateOf(-1L)
+    private var occurrence by mutableStateOf(-1L)
 
     private val muted = mutableStateOf(false)
 
-    /** Closes this screen whenever a TAKEN confirmation happens elsewhere. */
+    /** Advances past a dose that was confirmed taken elsewhere. */
     private val finishReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == AlarmActions.ACTION_ALARM_FINISH) {
-                if (!isFinishing) finish()
+            if (intent?.action == AlarmActions.ACTION_ALARM_FINISH && !isFinishing) {
+                lifecycleScope.launch { advanceToNextPendingOrFinish() }
             }
         }
     }
@@ -91,19 +97,16 @@ class AlarmActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        medId = intent?.getLongExtra(AlarmActions.EXTRA_MED_ID, -1L) ?: -1L
-        occurrence = intent?.getLongExtra(AlarmActions.EXTRA_OCCURRENCE, -1L) ?: -1L
-
-        // Alarm-style: wake and cover the lock screen; keep screen awake while
-        // the alarm is ringing so it cannot be ignored.
+        // Alarm-style: wake and cover the lock screen.
         setShowWhenLocked(true)
         setTurnScreenOn(true)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val keyguard = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         keyguard.requestDismissKeyguard(this, null)
 
         // Back/gesture must NOT dismiss the alarm before it is confirmed taken.
         onBackPressedDispatcher.addCallback(this) { /* stay on the alarm screen */ }
+
+        loadAlertFromIntent(intent)
 
         setContent {
             MemPharmaTheme(darkTheme = true) {
@@ -120,6 +123,17 @@ class AlarmActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /**
+     * This activity is single-instance: when another alert arrives (or the app is
+     * reopened and brings the pending alert back) Android reuses this screen and
+     * calls this instead of creating a new one.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        loadAlertFromIntent(intent)
     }
 
     override fun onStart() {
@@ -140,30 +154,85 @@ class AlarmActivity : ComponentActivity() {
         super.onStop()
     }
 
-    /** "✓ I took it" — the only action that closes this screen. */
+    /** "✓ I took it" — the only action that closes this screen for this dose. */
     private fun confirmTaken(med: Medication?) {
         if (isFinishing) return
+        val takenOccurrence = occurrence
         lifecycleScope.launch {
             if (med != null) {
-                trackingRepository.recordTaken(med, occurrence, System.currentTimeMillis())
+                trackingRepository.recordTaken(med, takenOccurrence, System.currentTimeMillis())
             }
             AlarmRingerService.stop(this@AlarmActivity)
-            Notifications.dismiss(this@AlarmActivity, occurrence)
-            finish()
+            Notifications.dismiss(this@AlarmActivity, takenOccurrence)
+            // Show the next dose still waiting, if any; otherwise close.
+            advanceToNextPendingOrFinish()
         }
     }
 
-    /** "Not now" — silence the ringing only; the screen stays until confirmed. */
+    /** "Not now" — silence the ringing only; the screen (and alert) stay. */
     private fun muteRinging(med: Medication?) {
         if (muted.value) return
+        val mutedOccurrence = occurrence
         lifecycleScope.launch {
             if (med != null) {
-                trackingRepository.recordMuted(med, occurrence, System.currentTimeMillis())
+                trackingRepository.recordMuted(med, mutedOccurrence, System.currentTimeMillis())
             }
             AlarmRingerService.stop(this@AlarmActivity)
             muted.value = true
             // Screen may sleep again now the ringing is silenced; it will still
             // be on this screen waiting when the person looks again.
+            applyScreenAwake(false)
+        }
+    }
+
+    /** Show the next alert still waiting for an answer, or close when none left. */
+    private suspend fun advanceToNextPendingOrFinish() {
+        val next = trackingRepository.pendingAlert()
+        when {
+            // Nothing left to answer — only now may the screen close.
+            next == null -> finish()
+            // Our own dose is still waiting (e.g. a different dose was answered
+            // elsewhere), so keep this alert on screen.
+            next.medicationId == medId && next.occurrence == occurrence -> Unit
+            else -> loadAlert(next.medicationId, next.occurrence)
+        }
+    }
+
+    private fun loadAlertFromIntent(intent: Intent?) {
+        loadAlert(
+            intent?.getLongExtra(AlarmActions.EXTRA_MED_ID, -1L) ?: -1L,
+            intent?.getLongExtra(AlarmActions.EXTRA_OCCURRENCE, -1L) ?: -1L
+        )
+    }
+
+    /**
+     * Points the screen at one dose alarm, restoring its muted state from the
+     * audit log so a silenced-but-untaken alert returns in its calm form.
+     */
+    private fun loadAlert(id: Long, occ: Long) {
+        if (id < 0 || occ < 0) {
+            finish()
+            return
+        }
+        medId = id
+        occurrence = occ
+        muted.value = false
+        applyScreenAwake(true)
+
+        lifecycleScope.launch {
+            // Ignore a stale load if another alert replaced this one meanwhile.
+            if (medId != id || occurrence != occ) return@launch
+            val isMuted = trackingRepository.isMuted(id, occ)
+            muted.value = isMuted
+            applyScreenAwake(!isMuted)
+        }
+    }
+
+    /** Keep the screen awake while the alarm is actively asking for an answer. */
+    private fun applyScreenAwake(awake: Boolean) {
+        if (awake) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }

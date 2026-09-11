@@ -7,16 +7,20 @@ import android.content.Intent
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
+import com.mempharma.app.data.settings.AlertTone
+import com.mempharma.app.data.settings.parseAlertTone
 import com.mempharma.app.di.AppGraph
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -74,35 +78,57 @@ class AlarmRingerService : Service() {
     private fun startAlarm(medId: Long, occurrence: Long) {
         acquireWakeLock()
         alarmJob = scope.launch {
-            val med = AppGraph.from(applicationContext)
-                .medicationRepository()
+            val graph = AppGraph.from(applicationContext)
+            val med = graph.medicationRepository()
                 .get(medId) ?: run {
                     stopSelf()
                     return@launch
                 }
+
+            // The sound the person chose in Settings (device default when unset).
+            val tone = parseAlertTone(graph.settingsRepository().alertRingtone.first())
 
             // Foreground notification doubles as the full-screen, ongoing alarm
             // indicator that cannot be swiped away.
             val notification = Notifications.buildAlarmNotification(applicationContext, med, occurrence)
             startForeground(Notifications.notificationId(occurrence), notification)
 
-            startRinging()
+            startRinging(tone)
         }
     }
 
-    /** Loop the alarm tone + vibration until the service is stopped. */
-    private fun startRinging() {
-        val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        ringtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)
-            ?: RingtoneManager.getRingtone(
-                applicationContext,
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            )
+    /**
+     * Loop the chosen alert tone + vibration until the service is stopped.
+     * A [AlertTone.Silent] choice skips the tone but still vibrates.
+     */
+    private fun startRinging(tone: AlertTone) {
+        val ringtoneUri: Uri? = when (tone) {
+            AlertTone.Silent -> null
+            AlertTone.SystemDefault -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            is AlertTone.Custom -> Uri.parse(tone.uri)
+        }
+
+        // Prefer the chosen sound, then fall back to the default alarm tone and
+        // finally the default notification tone so a reminder never rings silent
+        // by accident (unless the person explicitly asked for Silent).
+        ringtone = ringtoneUri?.let { uri ->
+            RingtoneManager.getRingtone(applicationContext, uri)
+                ?: RingtoneManager.getRingtone(
+                    applicationContext,
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                )
+                ?: RingtoneManager.getRingtone(
+                    applicationContext,
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                )
+        }
         ringtone?.isLooping = true
         ringtone?.play()
 
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        audioManager?.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN)
+        if (ringtone != null) {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            audioManager?.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN)
+        }
 
         val v = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         vibrator = v

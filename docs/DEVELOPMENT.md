@@ -49,6 +49,28 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 - **Screens** each own a `@HiltViewModel`; navigation is a single `NavHost`
   with a large bottom `NavigationBar` (`Today`, `Medicines`, `History`, `Settings`).
 
+### Languages / localization
+
+MemPharma ships **Portuguese (Portugal) as the default language** and keeps English:
+
+- `res/values/strings.xml` → **Portuguese (pt-PT)** — the default/fallback.
+- `res/values-en/strings.xml` → **English** — used only when the phone is set to English.
+
+Nothing forces a locale, so the **displayed language can differ from the device language**
+(a French phone falls back to the Portuguese default). Because of that:
+
+- Never call `Locale.getDefault()` for user-visible dates/times. Use `rememberAppLocale()`
+  (`util/AppLocale.kt`), which mirrors the resource fallback, and pass it to the
+  locale-parameterized helpers in `util/TimeFormat.kt`.
+- Keep user-facing text in `strings.xml` only. Compose screens use `stringResource` /
+  `pluralStringResource`; ViewModels expose `@StringRes Int` (e.g. `AddEditState.error`) or take
+  `@ApplicationContext` when they need a default value (`AddEditMedViewModel`, `TrackingRepository`).
+- The pure rules in `domain/SmsTrigger.kt` take an `SmsTemplates` value (built from resources by
+  `data/sms/SmsTexts.kt`) so the domain stays free of Android dependencies and remains unit-tested.
+- **Known limits**: notification-channel names are immutable once created (existing installs keep
+  the old wording), and audit-log notes are stored in the language active when the event was
+  recorded, so old rows stay in their original language (no migration).
+
 ### Automated refill texts (optional)
 
 The person can pick **one contact from their contacts** in `Settings → Text a family member`.

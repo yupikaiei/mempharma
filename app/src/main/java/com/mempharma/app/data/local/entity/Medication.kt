@@ -21,7 +21,9 @@ data class Medication(
     val name: String = "",
     val colorIndex: Int = 0,
     val doseQuantity: Int = 1,
-    val unitLabel: String = "pill(s)",
+    // Default matches the app's default language (Portuguese); the Add/Edit
+    // screen resolves the localized default from resources.
+    val unitLabel: String = "comprimido(s)",
     val quantity: Int = 0,
     val startDateEpochDay: Long = 0L,
     val timesCsv: String = "08:00",

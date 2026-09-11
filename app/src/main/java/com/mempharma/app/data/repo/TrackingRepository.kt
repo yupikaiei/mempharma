@@ -1,5 +1,7 @@
 package com.mempharma.app.data.repo
 
+import android.content.Context
+import com.mempharma.app.R
 import com.mempharma.app.data.local.dao.DoseEventDao
 import com.mempharma.app.data.local.dao.MedicationDao
 import com.mempharma.app.data.local.entity.DoseAction
@@ -10,6 +12,7 @@ import com.mempharma.app.data.scheduler.AlarmScheduler
 import com.mempharma.app.data.sms.SmsAlertManager
 import com.mempharma.app.domain.DoseEngine
 import com.mempharma.app.domain.SmsTrigger
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -22,6 +25,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class TrackingRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val medicationDao: MedicationDao,
     private val doseEventDao: DoseEventDao,
     private val scheduler: AlarmScheduler,
@@ -98,7 +102,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.TAKEN.name,
-                note = "Took ${med.doseQuantity} ${med.unitLabel}"
+                note = context.getString(R.string.track_note_taken, med.doseQuantity, med.unitLabel)
             )
         )
         // No stock left -> stop reminding until a refill is recorded.
@@ -122,7 +126,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.MUTED.name,
-                note = "Reminder muted — not taken"
+                note = context.getString(R.string.track_note_muted)
             )
         )
         return true
@@ -137,7 +141,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.MISSED.name,
-                note = "Dose was missed"
+                note = context.getString(R.string.track_note_missed)
             )
         )
     }
@@ -159,7 +163,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = null,
                 actionAtEpochMillis = at,
                 action = DoseAction.REFILLED.name,
-                note = "Added $addQuantity ${med.unitLabel}"
+                note = context.getString(R.string.track_note_refill, addQuantity, med.unitLabel)
             )
         )
         scheduler.scheduleMedication(med.copy(quantity = newQuantity))

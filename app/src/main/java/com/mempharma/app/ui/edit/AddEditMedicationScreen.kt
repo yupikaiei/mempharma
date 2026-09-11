@@ -50,14 +50,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mempharma.app.R
 import com.mempharma.app.ui.components.MedPalette
+import com.mempharma.app.util.TimeFormat
+import com.mempharma.app.util.rememberAppLocale
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun AddEditMedicationScreen(
@@ -95,10 +98,12 @@ fun AddEditMedicationScreen(
         // Header: back, title, delete (when editing).
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDone) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
             }
             Text(
-                text = if (state.isEditing) "Edit medicine" else "Add a medicine",
+                text = stringResource(
+                    if (state.isEditing) R.string.edit_title_edit else R.string.edit_title_add
+                ),
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f)
             )
@@ -106,7 +111,7 @@ fun AddEditMedicationScreen(
                 IconButton(onClick = { showDeleteDialog = true }) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = stringResource(R.string.common_delete),
                         tint = scheme.error
                     )
                 }
@@ -114,19 +119,24 @@ fun AddEditMedicationScreen(
         }
 
         // 1. Name
-        SectionLabel("Medicine name")
+        SectionLabel(stringResource(R.string.edit_label_name))
         OutlinedTextField(
             value = state.name,
             onValueChange = viewModel::updateName,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge,
-            placeholder = { Text("e.g. Blood pressure pill", style = MaterialTheme.typography.bodyLarge) }
+            placeholder = {
+                Text(
+                    stringResource(R.string.edit_placeholder_name),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         )
         Spacer(Modifier.height(20.dp))
 
         // 2. Dose amount
-        SectionLabel("How many pills each time?")
+        SectionLabel(stringResource(R.string.edit_label_dose))
         OutlinedTextField(
             value = state.doseQuantity,
             onValueChange = viewModel::updateDoseQuantity,
@@ -138,7 +148,7 @@ fun AddEditMedicationScreen(
         Spacer(Modifier.height(20.dp))
 
         // 3. Stock
-        SectionLabel("Pills in the bottle right now")
+        SectionLabel(stringResource(R.string.edit_label_stock))
         OutlinedTextField(
             value = state.quantity,
             onValueChange = viewModel::updateQuantity,
@@ -150,7 +160,7 @@ fun AddEditMedicationScreen(
         Spacer(Modifier.height(20.dp))
 
         // 4. Unit
-        SectionLabel("What do we call each pill?")
+        SectionLabel(stringResource(R.string.edit_label_unit))
         OutlinedTextField(
             value = state.unitLabel,
             onValueChange = viewModel::updateUnit,
@@ -161,7 +171,7 @@ fun AddEditMedicationScreen(
         Spacer(Modifier.height(20.dp))
 
         // 4b. Refill warning level (used by the optional "text my family member" alerts).
-        SectionLabel("Text my family member when this many are left")
+        SectionLabel(stringResource(R.string.edit_label_low_stock))
         OutlinedTextField(
             value = state.lowStockThreshold,
             onValueChange = viewModel::updateLowStockThreshold,
@@ -172,15 +182,14 @@ fun AddEditMedicationScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "A text is also sent if the medicine runs out completely. " +
-                "This only happens when text alerts are turned on in Settings.",
+            text = stringResource(R.string.edit_low_stock_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant
         )
         Spacer(Modifier.height(20.dp))
 
         // 5. Colour
-        SectionLabel("Choose a colour for this medicine")
+        SectionLabel(stringResource(R.string.edit_label_color))
         MedPalette.listColors().chunked(4).forEach { rowColors ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowColors.forEachIndexed { idx, color ->
@@ -198,9 +207,9 @@ fun AddEditMedicationScreen(
         Spacer(Modifier.height(8.dp))
 
         // 6. Schedule
-        SectionLabel("When should we remind you?")
+        SectionLabel(stringResource(R.string.edit_label_schedule))
         Text(
-            text = "Tap the times you take this medicine.",
+            text = stringResource(R.string.edit_schedule_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant
         )
@@ -210,7 +219,7 @@ fun AddEditMedicationScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowPresets.forEach { preset ->
                     TimeToggleButton(
-                        label = preset.label,
+                        label = stringResource(preset.labelRes),
                         selected = preset.minuteOfDay in state.selectedTimes,
                         onClick = { viewModel.toggleTime(preset.minuteOfDay) },
                         modifier = Modifier.weight(1f)
@@ -233,12 +242,12 @@ fun AddEditMedicationScreen(
             Spacer(Modifier.height(8.dp))
         }
 
-        OutlinedButton2(text = "Add another time", onClick = ::showTimePicker)
+        OutlinedButton2(text = stringResource(R.string.edit_add_time), onClick = ::showTimePicker)
         Spacer(Modifier.height(24.dp))
 
         state.error?.let { error ->
             Text(
-                text = error,
+                text = stringResource(error),
                 color = scheme.error,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
@@ -262,7 +271,7 @@ fun AddEditMedicationScreen(
                     strokeWidth = 3.dp
                 )
             } else {
-                Text("Save medicine", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.edit_save), style = MaterialTheme.typography.titleMedium)
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -271,18 +280,20 @@ fun AddEditMedicationScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete ${state.name}?") },
-            text = { Text("This removes the medicine and its reminder history from this device.") },
+            title = { Text(stringResource(R.string.edit_delete_title, state.name)) },
+            text = { Text(stringResource(R.string.edit_delete_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
                         viewModel.delete()
                     }
-                ) { Text("Delete", color = scheme.error) }
+                ) { Text(stringResource(R.string.common_delete), color = scheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             }
         )
     }
@@ -348,8 +359,10 @@ private fun TimeToggleButton(label: String, selected: Boolean, onClick: () -> Un
 @Composable
 private fun CustomTimeChip(minutes: Int, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val label = LocalTime.of(minutes / 60, minutes % 60)
-        .format(DateTimeFormatter.ofPattern("h:mm a"))
+    val label = TimeFormat.formatLocalTime(
+        LocalTime.of(minutes / 60, minutes % 60),
+        rememberAppLocale()
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -361,7 +374,7 @@ private fun CustomTimeChip(minutes: Int, onClick: () -> Unit) {
         IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
             Icon(
                 Icons.Filled.Close,
-                contentDescription = "Remove $label",
+                contentDescription = stringResource(R.string.edit_remove_time, label),
                 tint = scheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )

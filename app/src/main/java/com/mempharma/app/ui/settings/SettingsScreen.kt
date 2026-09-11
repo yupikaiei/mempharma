@@ -14,6 +14,7 @@ import android.provider.ContactsContract
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -67,21 +69,23 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.BuildConfig
+import com.mempharma.app.R
 import com.mempharma.app.data.settings.ALERT_SILENT
 import com.mempharma.app.data.settings.AlertTone
 import com.mempharma.app.data.settings.SettingsRepository
 import com.mempharma.app.data.settings.parseAlertTone
 import com.mempharma.app.data.sms.SmsTestResult
+import com.mempharma.app.data.sms.SmsTexts
 import com.mempharma.app.domain.SmsStage
 import com.mempharma.app.domain.SmsTrigger
 import kotlinx.coroutines.delay
 
-private data class FontOption(val label: String, val scale: Float)
+private data class FontOption(@StringRes val labelRes: Int, val scale: Float)
 
 private val fontOptions = listOf(
-    FontOption("Standard", SettingsRepository.FONT_STANDARD),
-    FontOption("Large", SettingsRepository.FONT_LARGE),
-    FontOption("Extra large", SettingsRepository.FONT_EXTRA_LARGE)
+    FontOption(R.string.settings_font_standard, SettingsRepository.FONT_STANDARD),
+    FontOption(R.string.settings_font_large, SettingsRepository.FONT_LARGE),
+    FontOption(R.string.settings_font_extra, SettingsRepository.FONT_EXTRA_LARGE)
 )
 
 @Composable
@@ -104,14 +108,18 @@ fun SettingsScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineLarge)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineLarge)
 
         // --- Text size ---
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Text size", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    "Make everything bigger if it is hard to read.",
+                    stringResource(R.string.settings_text_size_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    stringResource(R.string.settings_text_size_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
@@ -133,7 +141,7 @@ fun SettingsScreen() {
                             Icon(Icons.Filled.Check, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                         }
-                        Text(option.label, style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(option.labelRes), style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -168,17 +176,20 @@ fun SettingsScreen() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Info, contentDescription = null, tint = scheme.primary)
                     Spacer(Modifier.width(8.dp))
-                    Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(R.string.settings_about_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "MemPharma • version ${BuildConfig.VERSION_NAME}",
+                    stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Everything is stored only on this device. " +
-                        "No account is needed and nothing is sent to the internet.",
+                    stringResource(R.string.settings_about_privacy),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
@@ -222,15 +233,19 @@ private fun ReminderSettingsCard(context: Context) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Notifications, contentDescription = null, tint = scheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("Reminders & alerts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.settings_reminders_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
             Spacer(Modifier.height(12.dp))
 
             Text(
                 text = if (notificationsGranted) {
-                    "Notifications: on ✓"
+                    stringResource(R.string.settings_notifications_on)
                 } else {
-                    "Notifications are turned off — alerts cannot be shown."
+                    stringResource(R.string.settings_notifications_off)
                 },
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -244,15 +259,15 @@ private fun ReminderSettingsCard(context: Context) {
                         context.startActivity(intent)
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) { Text("Allow notifications") }
+                ) { Text(stringResource(R.string.settings_allow_notifications)) }
             }
 
             Spacer(Modifier.height(8.dp))
             Text(
                 text = if (exactAllowed) {
-                    "Precise reminders: on ✓"
+                    stringResource(R.string.settings_precise_on)
                 } else {
-                    "Precise reminders are off. Reminders may be late — please allow them."
+                    stringResource(R.string.settings_precise_off)
                 },
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -260,14 +275,13 @@ private fun ReminderSettingsCard(context: Context) {
                 Button(
                     onClick = { openSystemSettings() },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) { Text("Allow precise reminders") }
+                ) { Text(stringResource(R.string.settings_allow_precise)) }
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "To make reminders cover the whole screen, switch on " +
-                        "\u201cFull-screen notifications\u201d for MemPharma in system settings.",
+                    stringResource(R.string.settings_fullscreen_hint),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 OutlinedButton(
@@ -279,7 +293,7 @@ private fun ReminderSettingsCard(context: Context) {
                         context.startActivity(intent)
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) { Text("Open notification settings") }
+                ) { Text(stringResource(R.string.settings_open_notification_settings)) }
             }
         }
     }
@@ -347,7 +361,10 @@ private fun AlertSoundCard(
             )
             putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
             putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Alert sound")
+            putExtra(
+                RingtoneManager.EXTRA_RINGTONE_TITLE,
+                context.getString(R.string.settings_alert_sound_title)
+            )
             putExtra(
                 RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -363,19 +380,22 @@ private fun AlertSoundCard(
                 Icon(Icons.Filled.Notifications, contentDescription = null, tint = scheme.primary)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Alert sound",
+                    stringResource(R.string.settings_alert_sound_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "The sound that plays when it is time to take a medicine.",
+                stringResource(R.string.settings_alert_sound_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant
             )
             Spacer(Modifier.height(12.dp))
-            Text("Current: $displayName", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.settings_alert_sound_current, displayName),
+                style = MaterialTheme.typography.bodyLarge
+            )
 
             Button(
                 onClick = { openPicker() },
@@ -383,7 +403,7 @@ private fun AlertSoundCard(
                     .fillMaxWidth()
                     .padding(top = 8.dp)
                     .height(56.dp)
-            ) { Text("Choose sound") }
+            ) { Text(stringResource(R.string.settings_choose_sound)) }
 
             OutlinedButton(
                 onClick = {
@@ -401,13 +421,17 @@ private fun AlertSoundCard(
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (previewing) "Stop" else "Preview")
+                Text(
+                    stringResource(
+                        if (previewing) R.string.common_stop else R.string.common_preview
+                    )
+                )
             }
 
             if (tone == AlertTone.Silent) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Silent: reminders still vibrate and show the full-screen alert.",
+                    stringResource(R.string.settings_silent_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
@@ -418,11 +442,11 @@ private fun AlertSoundCard(
 
 /** Human-readable name for the current choice. */
 private fun toneDisplayName(context: Context, tone: AlertTone): String = when (tone) {
-    AlertTone.SystemDefault -> "Default (system alarm)"
-    AlertTone.Silent -> "Silent"
+    AlertTone.SystemDefault -> context.getString(R.string.settings_sound_default)
+    AlertTone.Silent -> context.getString(R.string.settings_sound_silent)
     is AlertTone.Custom -> runCatching {
         RingtoneManager.getRingtone(context, Uri.parse(tone.uri))?.getTitle(context)
-    }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Custom sound"
+    }.getOrNull()?.takeIf { it.isNotBlank() } ?: context.getString(R.string.settings_sound_custom)
 }
 
 /** Map the choice to a device URI, or null for [AlertTone.Silent]. */
@@ -505,15 +529,14 @@ private fun SmsAlertCard(
                 Icon(Icons.Filled.Person, contentDescription = null, tint = scheme.primary)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Text a family member",
+                    stringResource(R.string.settings_sms_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "We can text someone when a medicine is almost finished or has run out, " +
-                    "so they can pick up a refill. We repeat every 3 days until you record a refill.",
+                stringResource(R.string.settings_sms_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant
             )
@@ -530,9 +553,9 @@ private fun SmsAlertCard(
                         }
                     },
                 singleLine = true,
-                label = { Text("Patient name (optional)") },
-                placeholder = { Text("e.g. John") },
-                supportingText = { Text("Used in the text, e.g. \"John's Metformin\".") },
+                label = { Text(stringResource(R.string.settings_sms_patient_name)) },
+                placeholder = { Text(stringResource(R.string.settings_sms_patient_placeholder)) },
+                supportingText = { Text(stringResource(R.string.settings_sms_patient_support)) },
                 textStyle = MaterialTheme.typography.bodyLarge,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
@@ -550,7 +573,7 @@ private fun SmsAlertCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "Send refill texts",
+                    stringResource(R.string.settings_sms_send_toggle),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
@@ -559,10 +582,10 @@ private fun SmsAlertCard(
 
             Spacer(Modifier.height(8.dp))
             if (permissionGranted) {
-                Text("Sending texts: allowed ✓", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.settings_sms_allowed), style = MaterialTheme.typography.bodyLarge)
             } else {
                 Text(
-                    "MemPharma needs permission to send texts. Nothing is sent until you allow it.",
+                    stringResource(R.string.settings_sms_permission_needed),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Button(
@@ -571,13 +594,13 @@ private fun SmsAlertCard(
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                         .height(56.dp)
-                ) { Text("Allow sending texts") }
+                ) { Text(stringResource(R.string.settings_sms_allow)) }
             }
 
             Spacer(Modifier.height(12.dp))
             if (contactNumber.isNotBlank()) {
                 Text(
-                    "Sending to:",
+                    stringResource(R.string.settings_sms_sending_to),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
@@ -597,13 +620,13 @@ private fun SmsAlertCard(
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp)
-                    ) { Text("Change") }
+                    ) { Text(stringResource(R.string.common_change)) }
                     OutlinedButton(
                         onClick = onClearContact,
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp)
-                    ) { Text("Remove") }
+                    ) { Text(stringResource(R.string.common_remove)) }
                 }
             } else {
                 Button(
@@ -611,11 +634,18 @@ private fun SmsAlertCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                ) { Text("Choose contact") }
+                ) { Text(stringResource(R.string.common_choose_contact)) }
                 TextButton(
                     onClick = { typingNumber = !typingNumber },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text(if (typingNumber) "Cancel" else "Type a number instead") }
+                ) {
+                    Text(
+                        stringResource(
+                            if (typingNumber) R.string.common_cancel
+                            else R.string.common_type_number_instead
+                        )
+                    )
+                }
             }
 
             if (typingNumber && contactNumber.isBlank()) {
@@ -627,7 +657,10 @@ private fun SmsAlertCard(
                     textStyle = MaterialTheme.typography.bodyLarge,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     placeholder = {
-                        Text("e.g. 07700 900123", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.settings_sms_number_placeholder),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 )
                 Button(
@@ -641,23 +674,24 @@ private fun SmsAlertCard(
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                         .height(56.dp)
-                ) { Text("Save number") }
+                ) { Text(stringResource(R.string.common_save_number)) }
             }
 
             if (contactNumber.isNotBlank()) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "What a medicine that is almost finished will say:",
+                    stringResource(R.string.settings_sms_preview_caption),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
                 Text(
                     SmsTrigger.buildMessage(
-                        medicineName = "Blood pressure pill",
+                        medicineName = stringResource(R.string.settings_sms_sample_medicine),
                         quantity = 3,
-                        unitLabel = "pill(s)",
+                        unitLabel = stringResource(R.string.unit_pill_default),
                         stage = SmsStage.LOW,
-                        patientName = typedName
+                        patientName = typedName,
+                        templates = SmsTexts.templates(context)
                     ),
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -671,17 +705,18 @@ private fun SmsAlertCard(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Send a test text")
+                    Text(stringResource(R.string.settings_sms_test_button))
                 }
                 testResult?.let { result ->
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = when (result) {
-                            SmsTestResult.Sent -> "Test text sent ✓"
-                            SmsTestResult.NoContact -> "Choose a contact first."
-                            SmsTestResult.NoPermission -> "Allow sending texts first."
+                            SmsTestResult.Sent -> stringResource(R.string.settings_sms_result_sent)
+                            SmsTestResult.NoContact -> stringResource(R.string.settings_sms_result_no_contact)
+                            SmsTestResult.NoPermission ->
+                                stringResource(R.string.settings_sms_result_no_permission)
                             SmsTestResult.Failed ->
-                                "The phone could not send the text. Check the signal and try again."
+                                stringResource(R.string.settings_sms_result_failed)
                         },
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (result == SmsTestResult.Sent) scheme.primary else scheme.error

@@ -39,10 +39,10 @@ object Notifications {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 AlarmActions.CHANNEL_ID,
-                AlarmActions.CHANNEL_NAME,
+                context.getString(R.string.notif_channel_reminders_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Alerts when it is time to take your medicine"
+                description = context.getString(R.string.notif_channel_reminders_desc)
                 enableVibration(false) // the ringer service handles sound + vibration
                 setSound(null, null)
             }
@@ -99,11 +99,19 @@ object Notifications {
         return NotificationCompat.Builder(context, AlarmActions.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(context.getColor(R.color.ic_launcher_background))
-            .setContentTitle("${med.name} — time to take it")
-            .setContentText("Take ${med.doseQuantity} ${med.unitLabel}")
+            .setContentTitle(context.getString(R.string.notif_dose_title, med.name))
+            .setContentText(
+                context.getString(R.string.notif_dose_text, med.doseQuantity, med.unitLabel)
+            )
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("Take ${med.doseQuantity} ${med.unitLabel}. Tap \"I took it\" when done, or \"Not now\" to stop this reminder.")
+                    .bigText(
+                        context.getString(
+                            R.string.notif_dose_bigtext,
+                            med.doseQuantity,
+                            med.unitLabel
+                        )
+                    )
             )
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -112,8 +120,16 @@ object Notifications {
             .setOngoing(true) // cannot be swiped away; must take a clear action
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .addAction(0, "✓  I took it", actionPendingIntent(context, med, occurrence, AlarmActions.ACTION_TAKEN))
-            .addAction(0, "Not now", actionPendingIntent(context, med, occurrence, AlarmActions.ACTION_MUTE))
+            .addAction(
+                0,
+                context.getString(R.string.notif_action_taken),
+                actionPendingIntent(context, med, occurrence, AlarmActions.ACTION_TAKEN)
+            )
+            .addAction(
+                0,
+                context.getString(R.string.notif_action_mute),
+                actionPendingIntent(context, med, occurrence, AlarmActions.ACTION_MUTE)
+            )
             .build()
     }
 

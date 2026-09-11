@@ -32,28 +32,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.annotation.StringRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mempharma.app.R
 import com.mempharma.app.ui.components.MedicationAvatar
 import com.mempharma.app.ui.components.StatusPill
 import com.mempharma.app.util.TimeFormat
+import com.mempharma.app.util.rememberAppLocale
 import java.io.File
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
-private enum class HistoryFilter(val label: String, val predicate: (HistoryRow) -> Boolean) {
-    All("All", { true }),
-    Taken("Taken", { it.action == "TAKEN" }),
-    Muted("Muted", { it.action == "MUTED" }),
-    Missed("Missed", { it.action == "MISSED" }),
-    Refill("Refills", { it.action == "REFILLED" })
+private enum class HistoryFilter(@StringRes val labelRes: Int, val predicate: (HistoryRow) -> Boolean) {
+    All(R.string.history_filter_all, { true }),
+    Taken(R.string.history_filter_taken, { it.action == "TAKEN" }),
+    Muted(R.string.history_filter_muted, { it.action == "MUTED" }),
+    Missed(R.string.history_filter_missed, { it.action == "MISSED" }),
+    Refill(R.string.history_filter_refills, { it.action == "REFILLED" })
 }
 
 @Composable
@@ -79,9 +82,9 @@ fun HistoryScreen() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("History", style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.history_title), style = MaterialTheme.typography.headlineLarge)
                 Text(
-                    text = "Every action is tracked on this device",
+                    text = stringResource(R.string.history_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -92,7 +95,7 @@ fun HistoryScreen() {
             ) {
                 Icon(
                     Icons.Filled.Share,
-                    contentDescription = "Export history",
+                    contentDescription = stringResource(R.string.history_export),
                     tint = if (rows.isNotEmpty()) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -128,7 +131,7 @@ fun HistoryScreen() {
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text(f.label, style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(f.labelRes), style = MaterialTheme.typography.titleSmall)
                 }
             }
         }
@@ -137,7 +140,7 @@ fun HistoryScreen() {
 
         if (filtered.isEmpty()) {
             Text(
-                text = "Nothing recorded yet.\nTap \"I took it\" or \"Not now\" on a reminder and it will appear here.",
+                text = stringResource(R.string.history_empty),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(24.dp)
@@ -170,7 +173,8 @@ fun HistoryScreen() {
 @Composable
 private fun HistoryRowCard(row: HistoryRow) {
     val scheme = MaterialTheme.colorScheme
-    val pill = actionPill(row.action)
+    val locale = rememberAppLocale()
+    val displayName = row.medName.ifBlank { stringResource(R.string.history_unknown_medicine) }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = scheme.surface),
@@ -181,17 +185,25 @@ private fun HistoryRowCard(row: HistoryRow) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             val (pillLabel, pillContainer, pillContent) = actionPill(row.action)
-            MedicationAvatar(name = row.medName, colorIndex = row.colorIndex, size = 44.dp)
+            MedicationAvatar(name = displayName, colorIndex = row.colorIndex, size = 44.dp)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = row.medName,
+                    text = displayName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 val detail = buildString {
-                    append(TimeFormat.formatTime(row.atEpoch))
-                    row.scheduledLabel?.let { append("  •  due $it") }
+                    append(TimeFormat.formatTime(row.atEpoch, locale))
+                    row.scheduledEpoch?.let {
+                        append("  ")
+                        append(
+                            stringResource(
+                                R.string.history_due,
+                                TimeFormat.formatTime(it, locale)
+                            )
+                        )
+                    }
                 }
                 Text(
                     text = detail,
@@ -213,24 +225,41 @@ private fun HistoryRowCard(row: HistoryRow) {
 }
 
 @Composable
-private fun actionPill(action: String): Triple<String, androidx.compose.ui.graphics.Color, androidx.compose.ui.graphics.Color> {
+private fun actionPill(action: String): Triple<String, Color, Color> {
     val scheme = MaterialTheme.colorScheme
     return when (action) {
-        "TAKEN" -> Triple("Taken", scheme.tertiaryContainer, scheme.onTertiaryContainer)
-        "MUTED" -> Triple("Muted", scheme.secondaryContainer, scheme.onSecondaryContainer)
-        "MISSED" -> Triple("Missed", scheme.errorContainer, scheme.onErrorContainer)
-        "REFILLED" -> Triple("Refill", scheme.primaryContainer, scheme.onPrimaryContainer)
+        "TAKEN" -> Triple(
+            stringResource(R.string.history_action_taken),
+            scheme.tertiaryContainer,
+            scheme.onTertiaryContainer
+        )
+        "MUTED" -> Triple(
+            stringResource(R.string.history_action_muted),
+            scheme.secondaryContainer,
+            scheme.onSecondaryContainer
+        )
+        "MISSED" -> Triple(
+            stringResource(R.string.history_action_missed),
+            scheme.errorContainer,
+            scheme.onErrorContainer
+        )
+        "REFILLED" -> Triple(
+            stringResource(R.string.history_action_refill),
+            scheme.primaryContainer,
+            scheme.onPrimaryContainer
+        )
         else -> Triple(action, scheme.surfaceVariant, scheme.onSurfaceVariant)
     }
 }
 
+@Composable
 private fun dayLabel(epochDay: Long): String {
-    val date = LocalDate.ofEpochDay(epochDay)
     val today = LocalDate.now()
+    val date = LocalDate.ofEpochDay(epochDay)
     return when (date) {
-        today -> "Today"
-        today.minusDays(1) -> "Yesterday"
-        else -> date.format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
+        today -> stringResource(R.string.time_today)
+        today.minusDays(1) -> stringResource(R.string.time_yesterday)
+        else -> TimeFormat.formatWeekdayDate(epochDay, rememberAppLocale())
     }
 }
 
@@ -245,7 +274,9 @@ private fun shareCsv(context: android.content.Context, file: File) {
         putExtra(android.content.Intent.EXTRA_STREAM, uri)
         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    val chooser = android.content.Intent.createChooser(send, "Share medicine history")
-        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    val chooser = android.content.Intent.createChooser(
+        send,
+        context.getString(R.string.common_share_medicine_history)
+    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(chooser)
 }

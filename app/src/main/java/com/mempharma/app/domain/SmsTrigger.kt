@@ -1,6 +1,7 @@
 package com.mempharma.app.domain
 
 import com.mempharma.app.data.local.entity.Medication
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
@@ -9,6 +10,27 @@ import java.util.concurrent.TimeUnit
  *  - [OUT]  -> nothing left at all
  */
 enum class SmsStage { LOW, OUT }
+
+/**
+ * The resource-resolved wording for the refill texts. Handing the strings in
+ * keeps [SmsTrigger] free of Android dependencies so its rules stay pure and
+ * unit-testable.
+ *
+ * @param out            "%1$s" = subject (the medicine, optionally "of <name>")
+ * @param low            "%1$s" = subject, "%2$d" = quantity, "%3$s" = unit
+ * @param test           "%1$s" = subject of the test sentence
+ * @param testNoun       the word for "medicines" used by the test message
+ * @param possessive     how a name owns a noun, e.g. "%1$s's %2$s" / "%2$s de %1$s"
+ * @param possessiveEndingS  the variant when the name already ends in "s"
+ */
+data class SmsTemplates(
+    val out: String,
+    val low: String,
+    val test: String,
+    val testNoun: String,
+    val possessive: String,
+    val possessiveEndingS: String
+)
 
 /**
  * What we last told the chosen contact about a medicine: which [stage] it was
@@ -93,18 +115,17 @@ object SmsTrigger {
     /**
      * The plain-language message the chosen contact receives.
      *
-     * [patientName] is the optional name entered in Settings. When it is blank
-     * the wording is exactly the same as before the setting existed, so the
-     * feature keeps working without it.
+     * The wording itself lives in string resources and is handed in through
+     * [templates], so this pure domain object holds no user-facing text.
+     * [patientName] is the optional name entered in Settings; when it is blank
+     * the message simply names the medicine.
      */
-    fun buildMessage(med: Medication, stage: SmsStage, patientName: String = ""): String =
-        buildMessage(
-            medicineName = med.name,
-            quantity = med.quantity,
-            unitLabel = med.unitLabel,
-            stage = stage,
-            patientName = patientName
-        )
+    fun buildMessage(
+        med: Medication,
+        stage: SmsStage,
+        patientName: String = "",
+        templates: SmsTemplates
+    ): String = buildMessage(med.name, med.quantity, med.unitLabel, stage, patientName, templates)
 
     /**
      * Same as [buildMessage] but from raw values, so the Settings screen can
@@ -115,15 +136,13 @@ object SmsTrigger {
         quantity: Int,
         unitLabel: String,
         stage: SmsStage,
-        patientName: String = ""
+        patientName: String = "",
+        templates: SmsTemplates
     ): String {
-        val subject = ownedNoun(medicineName, patientName)
+        val subject = subject(medicineName, patientName, templates)
         return when (stage) {
-            SmsStage.OUT ->
-                "MemPharma: $subject has run out. Please arrange a refill."
-            SmsStage.LOW ->
-                "MemPharma: $subject is almost finished — only $quantity $unitLabel left. " +
-                    "Please arrange a refill."
+            SmsStage.OUT -> format(templates.out, subject)
+            SmsStage.LOW -> format(templates.low, subject, quantity, unitLabel)
         }
     }
 
@@ -131,20 +150,27 @@ object SmsTrigger {
      * The one-off "Send a test text" message. Uses the same patient name so the
      * person sees exactly who the real alerts will mention.
      */
-    fun buildTestMessage(patientName: String = ""): String {
-        val who = ownedNoun("medicines", patientName)
-        return "MemPharma test text: refill alerts for $who that are running low will arrive here."
+    fun buildTestMessage(patientName: String = "", templates: SmsTemplates): String {
+        val who = subject(templates.testNoun, patientName, templates)
+        return format(templates.test, who)
     }
 
     /**
      * "Metformin" when no name is given, otherwise the medicine "belongs to" the
-     * patient: "John's Metformin", or "James' Metformin" when the name already
-     * ends in an s.
+     * patient. The possessive form is a resource too because it differs by
+     * language: English adds "'s"/"'", Portuguese uses "de <name>".
      */
-    private fun ownedNoun(noun: String, patientName: String): String {
+    private fun subject(noun: String, patientName: String, templates: SmsTemplates): String {
         val name = patientName.trim()
         if (name.isEmpty()) return noun
-        val possessive = if (name.endsWith("s", ignoreCase = true)) "$name'" else "$name's"
-        return "$possessive $noun"
+        val template = if (name.endsWith("s", ignoreCase = true)) {
+            templates.possessiveEndingS
+        } else {
+            templates.possessive
+        }
+        return format(template, name, noun)
     }
+
+    private fun format(template: String, vararg args: Any): String =
+        String.format(Locale.ROOT, template, *args)
 }

@@ -37,10 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.repo.MedicationRepository
 import com.mempharma.app.data.repo.TrackingRepository
@@ -50,6 +52,7 @@ import com.mempharma.app.data.scheduler.Notifications
 import com.mempharma.app.ui.components.StatusPill
 import com.mempharma.app.ui.theme.MemPharmaTheme
 import com.mempharma.app.util.TimeFormat
+import com.mempharma.app.util.rememberAppLocale
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
@@ -247,6 +250,7 @@ private fun AlarmContent(
     onMute: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    val locale = rememberAppLocale()
 
     Column(
         modifier = Modifier
@@ -269,10 +273,10 @@ private fun AlarmContent(
 
         Text(
             text = when {
-                muted && med != null -> "${med.name} — still to take"
-                muted -> "Medicine still to take"
-                med != null -> "Time for ${med.name}"
-                else -> "Time for your medicine"
+                muted && med != null -> stringResource(R.string.alarm_title_muted_named, med.name)
+                muted -> stringResource(R.string.alarm_title_muted)
+                med != null -> stringResource(R.string.alarm_title_named, med.name)
+                else -> stringResource(R.string.alarm_title)
             },
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
@@ -284,9 +288,9 @@ private fun AlarmContent(
 
         Text(
             text = if (med != null) {
-                "Take ${med.doseQuantity} ${med.unitLabel}"
+                stringResource(R.string.alarm_take, med.doseQuantity, med.unitLabel)
             } else {
-                "It is time to take your medicine"
+                stringResource(R.string.alarm_take_generic)
             },
             style = MaterialTheme.typography.titleLarge,
             color = scheme.onBackground,
@@ -296,7 +300,10 @@ private fun AlarmContent(
         if (occurrence > 0) {
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Scheduled at ${TimeFormat.formatTime(occurrence)}",
+                text = stringResource(
+                    R.string.alarm_scheduled_at,
+                    TimeFormat.formatTime(occurrence, locale)
+                ),
                 style = MaterialTheme.typography.bodyLarge,
                 color = scheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -306,7 +313,7 @@ private fun AlarmContent(
         if (muted) {
             Spacer(Modifier.height(20.dp))
             StatusPill(
-                text = "Reminder muted — tap below when you have taken it",
+                text = stringResource(R.string.alarm_muted_pill),
                 container = scheme.secondaryContainer,
                 content = scheme.onSecondaryContainer
             )
@@ -325,7 +332,7 @@ private fun AlarmContent(
                 contentColor = scheme.onTertiary
             )
         ) {
-            Text("✓  I took it", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.alarm_take_button), style = MaterialTheme.typography.headlineSmall)
         }
 
         if (!muted) {
@@ -337,14 +344,14 @@ private fun AlarmContent(
                     .height(80.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.onBackground)
             ) {
-                Text("Not now (stop ringing)", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.alarm_mute_button), style = MaterialTheme.typography.titleLarge)
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = "This alert stays on until you confirm the medicine was taken.",
+            text = stringResource(R.string.alarm_footer),
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant,
             textAlign = TextAlign.Center

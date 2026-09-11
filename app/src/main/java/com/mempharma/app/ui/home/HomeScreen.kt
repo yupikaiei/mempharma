@@ -30,10 +30,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mempharma.app.R
 import com.mempharma.app.data.scheduler.AlarmActions
 import com.mempharma.app.data.scheduler.AlarmRingerService
 import com.mempharma.app.data.scheduler.Notifications
@@ -41,10 +44,10 @@ import com.mempharma.app.ui.components.MedicationAvatar
 import com.mempharma.app.ui.components.RefillDialog
 import com.mempharma.app.ui.components.StatusPill
 import com.mempharma.app.util.TimeFormat
+import com.mempharma.app.util.rememberAppLocale
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -120,14 +123,16 @@ private fun stopActiveAlarm(
 }
 
 @Composable
-private fun Header(now: Long) {    val hour = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).hour
-    val greeting = when {
-        hour < 12 -> "Good morning"
-        hour < 18 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    val date = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault()))
+private fun Header(now: Long) {
+    val hour = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).hour
+    val greeting = stringResource(
+        when {
+            hour < 12 -> R.string.home_greeting_morning
+            hour < 18 -> R.string.home_greeting_afternoon
+            else -> R.string.home_greeting_evening
+        }
+    )
+    val date = TimeFormat.formatDay(now, rememberAppLocale())
 
     Column {
         Text(text = greeting, style = MaterialTheme.typography.headlineLarge)
@@ -158,11 +163,7 @@ private fun OverdueBanner(count: Int) {
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = if (count == 1) {
-                    "1 dose is due now. Take it and tap \"I took it\"."
-                } else {
-                    "$count doses are due now. Take them and tap \"I took it\"."
-                },
+                text = pluralStringResource(R.plurals.home_doses_due, count, count),
                 style = MaterialTheme.typography.bodyLarge,
                 color = scheme.onErrorContainer,
                 fontWeight = FontWeight.SemiBold
@@ -181,12 +182,12 @@ private fun EmptyHint() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "No medicines yet",
+            text = stringResource(R.string.home_empty_title),
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Add your first medicine and we will remind you when to take it.",
+            text = stringResource(R.string.home_empty_subtitle),
             style = MaterialTheme.typography.bodyLarge,
             color = scheme.onSurfaceVariant
         )
@@ -204,7 +205,7 @@ private fun AddMedicineButton(onAdd: () -> Unit) {
     ) {
         Icon(Icons.Filled.Add, contentDescription = null)
         Spacer(Modifier.width(8.dp))
-        Text("Add a medicine", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.common_add_medicine), style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -219,6 +220,7 @@ private fun DoseCard(
     val scheme = MaterialTheme.colorScheme
     val med = card.med
     val pending = card.nextPending
+    val locale = rememberAppLocale()
 
     val containerColor = when {
         card.isDueNow -> scheme.errorContainer
@@ -254,7 +256,12 @@ private fun DoseCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${med.doseQuantity} ${med.unitLabel} • ${TimeFormat.startedOn(med.startDateEpochDay)}",
+                        text = stringResource(
+                            R.string.common_dose_detail,
+                            med.doseQuantity,
+                            med.unitLabel,
+                            startedOnLabel(med.startDateEpochDay)
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = contentColor.copy(alpha = 0.8f)
                     )
@@ -267,9 +274,15 @@ private fun DoseCard(
                 pending != null -> {
                     Text(
                         text = if (pending.overdue) {
-                            "Due now — ${TimeFormat.formatTime(pending.occurrence)}"
+                            stringResource(
+                                R.string.home_due_now,
+                                TimeFormat.formatTime(pending.occurrence, locale)
+                            )
                         } else {
-                            "Next dose: ${TimeFormat.formatTime(pending.occurrence)}"
+                            stringResource(
+                                R.string.home_next_dose,
+                                TimeFormat.formatTime(pending.occurrence, locale)
+                            )
                         },
                         style = MaterialTheme.typography.titleMedium,
                         color = contentColor
@@ -285,7 +298,7 @@ private fun DoseCard(
                                 contentColor = scheme.onTertiary
                             )
                         ) {
-                            Text("✓ I took it", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.home_take), style = MaterialTheme.typography.titleMedium)
                         }
                         OutlinedButton(
                             onClick = { onMute(pending.occurrence) },
@@ -296,13 +309,13 @@ private fun DoseCard(
                                 contentColor = scheme.onSurfaceVariant
                             )
                         ) {
-                            Text("Not now", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.home_not_now), style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
                 card.allResolvedToday && card.hasSlotsToday -> {
                     Text(
-                        text = "All done today ✓",
+                        text = stringResource(R.string.home_all_done),
                         style = MaterialTheme.typography.titleMedium,
                         color = contentColor,
                         fontWeight = FontWeight.SemiBold
@@ -310,7 +323,7 @@ private fun DoseCard(
                 }
                 else -> {
                     Text(
-                        text = "No reminder scheduled today.",
+                        text = stringResource(R.string.home_no_reminder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = contentColor.copy(alpha = 0.8f)
                     )
@@ -324,7 +337,7 @@ private fun DoseCard(
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                Text("Refill", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.common_refill), style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -335,9 +348,35 @@ private fun DoseCard(
 private fun StockPill(med: com.mempharma.app.data.local.entity.Medication) {
     val scheme = MaterialTheme.colorScheme
     val (label, container, content) = when {
-        med.isOut -> Triple("0 left — refill", scheme.errorContainer, scheme.onErrorContainer)
-        med.isLow -> Triple("Only ${med.quantity} left", scheme.tertiaryContainer, scheme.onTertiaryContainer)
-        else -> Triple("${med.quantity} ${med.unitLabel}", scheme.surfaceVariant, scheme.onSurfaceVariant)
+        med.isOut -> Triple(
+            stringResource(R.string.home_stock_out),
+            scheme.errorContainer,
+            scheme.onErrorContainer
+        )
+        med.isLow -> Triple(
+            stringResource(R.string.home_stock_low, med.quantity),
+            scheme.tertiaryContainer,
+            scheme.onTertiaryContainer
+        )
+        else -> Triple(
+            stringResource(R.string.home_stock_normal, med.quantity, med.unitLabel),
+            scheme.surfaceVariant,
+            scheme.onSurfaceVariant
+        )
     }
     StatusPill(text = label, container = container, content = content)
+}
+
+/** Friendly "Started …" label for the trace line on each card. */
+@Composable
+private fun startedOnLabel(epochDay: Long): String {
+    val days = LocalDate.now().toEpochDay() - epochDay
+    return when {
+        days < 1 -> stringResource(R.string.time_started_today)
+        days == 1L -> stringResource(R.string.time_started_yesterday)
+        else -> stringResource(
+            R.string.time_started_on,
+            TimeFormat.formatDate(epochDay, rememberAppLocale())
+        )
+    }
 }

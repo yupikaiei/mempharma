@@ -1,13 +1,17 @@
 package com.mempharma.app.ui.edit
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.repo.MedicationRepository
 import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.domain.DoseEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,27 +23,27 @@ import kotlinx.coroutines.launch
 data class AddEditState(
     val name: String = "",
     val doseQuantity: String = "1",
-    val unitLabel: String = "pill(s)",
+    val unitLabel: String = "",
     val quantity: String = "30",
     val lowStockThreshold: String = "3",
     val colorIndex: Int = 0,
     val selectedTimes: Set<Int> = emptySet(), // minutes of day
     val isEditing: Boolean = false,
     val loading: Boolean = false,
-    val error: String? = null,
+    @StringRes val error: Int? = null,
     val finished: Boolean = false,
     val deleted: Boolean = false
 )
 
 /** Convenient, big, tappable time presets for people who do not want to type times. */
 object TimePresets {
-    data class Preset(val label: String, val minuteOfDay: Int)
+    data class Preset(@StringRes val labelRes: Int, val minuteOfDay: Int)
 
     val presets = listOf(
-        Preset("Morning", 8 * 60),
-        Preset("Noon", 12 * 60),
-        Preset("Evening", 18 * 60),
-        Preset("Night", 21 * 60 + 30)
+        Preset(R.string.edit_preset_morning, 8 * 60),
+        Preset(R.string.edit_preset_noon, 12 * 60),
+        Preset(R.string.edit_preset_evening, 18 * 60),
+        Preset(R.string.edit_preset_night, 21 * 60 + 30)
     )
 }
 
@@ -49,6 +53,7 @@ private const val DEFAULT_LOW_STOCK_THRESHOLD = 3
 @HiltViewModel
 class AddEditMedViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context,
     private val repository: MedicationRepository,
     private val trackingRepository: TrackingRepository
 ) : ViewModel() {
@@ -56,7 +61,10 @@ class AddEditMedViewModel @Inject constructor(
     private val medId: Long = savedStateHandle.get<Long>("medId") ?: 0L
 
     private val _state = MutableStateFlow(
-        AddEditState(isEditing = medId > 0L)
+        AddEditState(
+            isEditing = medId > 0L,
+            unitLabel = context.getString(R.string.unit_pill_default)
+        )
     )
     val state: StateFlow<AddEditState> = _state.asStateFlow()
 
@@ -113,10 +121,10 @@ class AddEditMedViewModel @Inject constructor(
             .coerceAtLeast(1)
 
         val error = when {
-            name.isEmpty() -> "Please type the medicine name."
-            s.selectedTimes.isEmpty() -> "Choose at least one reminder time."
-            doseQty == null || doseQty < 1 -> "How many pills each time?"
-            qty == null || qty < 0 -> "How many pills are in the bottle?"
+            name.isEmpty() -> R.string.edit_error_name
+            s.selectedTimes.isEmpty() -> R.string.edit_error_times
+            doseQty == null || doseQty < 1 -> R.string.edit_error_dose
+            qty == null || qty < 0 -> R.string.edit_error_stock
             else -> null
         }
         if (error != null) {
@@ -138,7 +146,7 @@ class AddEditMedViewModel @Inject constructor(
                 name = name,
                 colorIndex = s.colorIndex,
                 doseQuantity = doseQty!!,
-                unitLabel = s.unitLabel.ifBlank { "pill(s)" },
+                unitLabel = s.unitLabel.ifBlank { context.getString(R.string.unit_pill_default) },
                 quantity = newQuantity,
                 startDateEpochDay = existing?.startDateEpochDay ?: LocalDate.now().toEpochDay(),
                 timesCsv = times.joinToString(",") { it.toString() },

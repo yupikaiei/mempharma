@@ -16,6 +16,17 @@ class SmsTriggerTest {
 
     private val day = 24L * 60 * 60 * 1000
 
+    /** The English wording (mirrors res/values-en), so the domain stays resource-free. */
+    private val en = SmsTemplates(
+        out = "MemPharma: %1\$s has run out. Please arrange a refill.",
+        low = "MemPharma: %1\$s is almost finished — only %2\$d %3\$s left. " +
+            "Please arrange a refill.",
+        test = "MemPharma test text: refill alerts for %1\$s that are running low will arrive here.",
+        testNoun = "medicines",
+        possessive = "%1\$s's %2\$s",
+        possessiveEndingS = "%1\$s' %2\$s"
+    )
+
     private fun med(
         quantity: Int,
         threshold: Int = 3,
@@ -112,7 +123,7 @@ class SmsTriggerTest {
 
     @Test
     fun buildMessage_lowNamesTheMedicineAndCount() {
-        val message = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW)
+        val message = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, templates = en)
         assertTrue(message.contains("Paracetamol"))
         assertTrue(message.contains("2 pill(s)"))
         assertTrue(message.contains("refill", ignoreCase = true))
@@ -120,48 +131,90 @@ class SmsTriggerTest {
 
     @Test
     fun buildMessage_outSaysItRanOut() {
-        val message = SmsTrigger.buildMessage(med(quantity = 0), SmsStage.OUT)
+        val message = SmsTrigger.buildMessage(med(quantity = 0), SmsStage.OUT, templates = en)
         assertTrue(message.contains("Paracetamol"))
         assertTrue(message.contains("run out", ignoreCase = true))
     }
 
     @Test
     fun buildMessage_includesPatientNamePossessively() {
-        val message = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, patientName = "John")
+        val message = SmsTrigger.buildMessage(
+            med(quantity = 2),
+            SmsStage.LOW,
+            patientName = "John",
+            templates = en
+        )
         assertTrue(message.contains("John's Paracetamol"))
         assertTrue(message.contains("2 pill(s)"))
     }
 
     @Test
     fun buildMessage_usesApostropheOnlyWhenNameEndsInS() {
-        val message = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, patientName = "James")
+        val message = SmsTrigger.buildMessage(
+            med(quantity = 2),
+            SmsStage.LOW,
+            patientName = "James",
+            templates = en
+        )
         assertTrue(message.contains("James' Paracetamol"))
     }
 
     @Test
     fun buildMessage_trimsAndFallsBackWhenNameIsBlank() {
-        val blank = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, patientName = "   ")
+        val blank = SmsTrigger.buildMessage(
+            med(quantity = 2),
+            SmsStage.LOW,
+            patientName = "   ",
+            templates = en
+        )
         assertTrue(blank.contains("MemPharma: Paracetamol is almost finished"))
         assertFalse(blank.contains("'s"))
     }
 
     @Test
     fun buildMessage_includesPatientNameForOutToo() {
-        val message = SmsTrigger.buildMessage(med(quantity = 0), SmsStage.OUT, patientName = "John")
+        val message = SmsTrigger.buildMessage(
+            med(quantity = 0),
+            SmsStage.OUT,
+            patientName = "John",
+            templates = en
+        )
         assertTrue(message.contains("John's Paracetamol has run out"))
+    }
+
+    @Test
+    fun buildMessage_usesPortugueseWordingWhenGivenPortugueseTemplates() {
+        val pt = SmsTemplates(
+            out = "MemPharma: %1\$s acabou. Por favor, providencie um reabastecimento.",
+            low = "MemPharma: %1\$s está quase a acabar — restam apenas %2\$d %3\$s. " +
+                "Por favor, providencie um reabastecimento.",
+            test = "Mensagem de teste da MemPharma: os alertas de reabastecimento de %1\$s " +
+                "que estiverem a acabar chegarão aqui.",
+            testNoun = "medicamentos",
+            possessive = "%2\$s de %1\$s",
+            possessiveEndingS = "%2\$s de %1\$s"
+        )
+        val message = SmsTrigger.buildMessage(
+            med(quantity = 2),
+            SmsStage.LOW,
+            patientName = "João",
+            templates = pt
+        )
+        assertTrue(message.contains("Paracetamol de João"))
+        assertTrue(message.contains("restam apenas 2 pill(s)"))
     }
 
     // --- test message -------------------------------------------------------
 
     @Test
     fun buildTestMessage_includesPatientName() {
-        val message = SmsTrigger.buildTestMessage("John")
+        val message = SmsTrigger.buildTestMessage("John", en)
         assertTrue(message.contains("John's medicines"))
     }
 
     @Test
     fun buildTestMessage_fallsBackWhenNameIsBlank() {
-        val message = SmsTrigger.buildTestMessage("  ")
+        val message = SmsTrigger.buildTestMessage("  ", en)
         assertEquals(
             "MemPharma test text: refill alerts for medicines that are running low will arrive here.",
             message

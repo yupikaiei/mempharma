@@ -20,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 
 /**
@@ -66,19 +68,19 @@ fun RefillDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Refill ${med.name}",
+                text = "${stringResource(R.string.common_refill)} ${med.name}",
                 style = MaterialTheme.typography.headlineSmall
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    text = "${med.quantity} ${med.unitLabel} left in the bottle.",
+                    text = stringResource(R.string.refill_stock_line, med.quantity, med.unitLabel),
                     style = MaterialTheme.typography.bodyLarge,
                     color = scheme.onSurfaceVariant
                 )
                 Text(
-                    text = "How many are you adding?",
+                    text = stringResource(R.string.refill_how_many),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Row(
@@ -111,7 +113,7 @@ fun RefillDialog(
                     }
                 }
                 Text(
-                    text = "New total: $newTotal ${med.unitLabel}",
+                    text = stringResource(R.string.refill_new_total, newTotal, med.unitLabel),
                     style = MaterialTheme.typography.titleMedium,
                     color = scheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -124,7 +126,7 @@ fun RefillDialog(
                 enabled = amount >= 1,
                 modifier = Modifier.height(56.dp)
             ) {
-                Text("Add to bottle", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.refill_add), style = MaterialTheme.typography.titleMedium)
             }
         },
         dismissButton = {
@@ -132,7 +134,7 @@ fun RefillDialog(
                 onClick = onDismiss,
                 modifier = Modifier.height(56.dp)
             ) {
-                Text("Cancel", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.common_cancel), style = MaterialTheme.typography.titleMedium)
             }
         }
     )

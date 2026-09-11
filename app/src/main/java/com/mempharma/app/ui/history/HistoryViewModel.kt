@@ -8,7 +8,6 @@ import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.repo.MedicationRepository
 import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.util.ExportUtils
-import com.mempharma.app.util.TimeFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import java.time.Instant
@@ -32,7 +31,7 @@ data class HistoryRow(
     val action: String,
     val atEpoch: Long,
     val dayEpoch: Long,
-    val scheduledLabel: String?,
+    val scheduledEpoch: Long?,
     val note: String?
 )
 
@@ -60,14 +59,13 @@ class HistoryViewModel @Inject constructor(
                 val med = medsById[event.medicationId]
                 HistoryRow(
                     medicationId = event.medicationId,
-                    medName = med?.name ?: "Unknown",
+                    medName = med?.name.orEmpty(),
                     colorIndex = med?.colorIndex ?: 0,
                     action = event.action,
                     atEpoch = event.actionAtEpochMillis,
                     dayEpoch = Instant.ofEpochMilli(event.actionAtEpochMillis)
                         .atZone(zone).toLocalDate().toEpochDay(),
-                    scheduledLabel = event.scheduledForEpochMillis
-                        ?.let { TimeFormat.formatTime(it, zone) },
+                    scheduledEpoch = event.scheduledForEpochMillis,
                     note = event.note
                 )
             }

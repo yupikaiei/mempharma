@@ -2,47 +2,55 @@ package com.mempharma.app.util
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 /**
  * Small formatting helpers so every screen renders dates/times the same friendly
  * way (important for legibility to elderly users).
+ *
+ * Every function takes the [Locale] of the language that is currently displayed
+ * (see [AppLocale] and `rememberAppLocale`). This matters because the app's
+ * language can differ from the device language (e.g. a French phone falls back
+ * to the Portuguese default), so [Locale.getDefault] would format dates in the
+ * wrong language.
  */
 object TimeFormat {
 
-    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
-    private val dateFormatter = DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault())
-    private val fullDateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d, yyyy", Locale.getDefault())
+    private fun timeFormatter(locale: Locale): DateTimeFormatter =
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
 
-    fun formatTime(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
-        Instant.ofEpochMilli(epochMillis).atZone(zone).format(timeFormatter)
+    private fun dayFormatter(locale: Locale): DateTimeFormatter =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(locale)
 
-    fun formatDay(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String {
-        val date = Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
-        val today = LocalDate.now(zone)
-        return when (date) {
-            today -> "Today"
-            today.minusDays(1) -> "Yesterday"
-            else -> date.format(dateFormatter)
-        }
-    }
+    private fun dateFormatter(locale: Locale): DateTimeFormatter =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
 
-    fun formatFullDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
-        Instant.ofEpochMilli(epochMillis).atZone(zone).format(fullDateFormatter)
+    fun formatTime(
+        epochMillis: Long,
+        locale: Locale,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): String = Instant.ofEpochMilli(epochMillis).atZone(zone).format(timeFormatter(locale))
 
-    /** Friendly relative label used for the "started on" trace line. */
-    fun startedOn(epochDay: Long, zone: ZoneId = ZoneId.systemDefault()): String {
-        val date = LocalDate.ofEpochDay(epochDay)
-        val today = LocalDate.now(zone)
-        val days = today.toEpochDay() - epochDay
-        return if (days < 1) {
-            "Started today"
-        } else if (days == 1L) {
-            "Started yesterday"
-        } else {
-            "Started ${date.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault()))}"
-        }
-    }
+    fun formatLocalTime(time: LocalTime, locale: Locale): String =
+        time.format(timeFormatter(locale))
+
+    /** Weekday + date, e.g. "sexta-feira, 11 de setembro de 2026". */
+    fun formatDay(
+        epochMillis: Long,
+        locale: Locale,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): String = Instant.ofEpochMilli(epochMillis).atZone(zone).format(dayFormatter(locale))
+
+    /** Weekday + date from an epoch day, used for History day headers. */
+    fun formatWeekdayDate(epochDay: Long, locale: Locale): String =
+        LocalDate.ofEpochDay(epochDay).format(dayFormatter(locale))
+
+    /** Date only, for "<started> <date>" traces. */
+    fun formatDate(epochDay: Long, locale: Locale): String =
+        LocalDate.ofEpochDay(epochDay).format(dateFormatter(locale))
 }
+

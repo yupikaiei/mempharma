@@ -1,6 +1,7 @@
 package com.mempharma.app.util
 
 import android.content.Context
+import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.DoseAction
 import com.mempharma.app.data.local.entity.DoseEvent
 import com.mempharma.app.data.local.entity.Medication
@@ -38,13 +39,14 @@ object ExportUtils {
         // BOM so Excel opens non-ASCII text correctly.
         sb.append("\uFEFF")
 
-        sb.append("MEMPHARMA MEDICINE HISTORY EXPORT\n")
-        sb.append("Exported,").append(Instant.now().atZone(zone).format(stampFormatter)).append('\n')
+        sb.append(context.getString(R.string.export_header)).append('\n')
+        sb.append(context.getString(R.string.export_exported)).append(',')
+            .append(Instant.now().atZone(zone).format(stampFormatter)).append('\n')
         sb.append('\n')
 
         // --- Medicines ---
-        sb.append("MEDICINES\n")
-        sb.append("Name,Dose per time,Unit,Daily times,Stock left,Low-stock at,Started taking (date)\n")
+        sb.append(context.getString(R.string.export_medicines_section)).append('\n')
+        sb.append(context.getString(R.string.export_medicines_header)).append('\n')
         meds.forEach { med ->
             sb.append(csv(med.name))
                 .append(',').append(med.doseQuantity)
@@ -58,8 +60,8 @@ object ExportUtils {
         sb.append('\n')
 
         // --- Event log ---
-        sb.append("EVENT LOG\n")
-        sb.append("Date & time,Medicine,Action,Was scheduled at,Note\n")
+        sb.append(context.getString(R.string.export_events_section)).append('\n')
+        sb.append(context.getString(R.string.export_events_header)).append('\n')
         events
             .sortedBy { it.actionAtEpochMillis }
             .forEach { event ->
@@ -68,8 +70,8 @@ object ExportUtils {
                     ?.let { Instant.ofEpochMilli(it).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm", Locale.US)) }
                     ?: ""
                 sb.append(Instant.ofEpochMilli(event.actionAtEpochMillis).atZone(zone).format(stampFormatter))
-                    .append(',').append(csv(med?.name ?: "Unknown (id ${event.medicationId})"))
-                    .append(',').append(csv(actionLabel(event.action)))
+                    .append(',').append(csv(med?.name ?: context.getString(R.string.export_unknown_medicine, event.medicationId)))
+                    .append(',').append(csv(actionLabel(context, event.action)))
                     .append(',').append(csv(scheduled))
                     .append(',').append(csv(event.note ?: ""))
                     .append('\n')
@@ -79,11 +81,11 @@ object ExportUtils {
         return file
     }
 
-    private fun actionLabel(action: String): String = when (action) {
-        DoseAction.TAKEN.name -> "Taken"
-        DoseAction.MUTED.name -> "Muted (not taken)"
-        DoseAction.MISSED.name -> "Missed"
-        DoseAction.REFILLED.name -> "Refill"
+    private fun actionLabel(context: Context, action: String): String = when (action) {
+        DoseAction.TAKEN.name -> context.getString(R.string.export_action_taken)
+        DoseAction.MUTED.name -> context.getString(R.string.export_action_muted)
+        DoseAction.MISSED.name -> context.getString(R.string.export_action_missed)
+        DoseAction.REFILLED.name -> context.getString(R.string.export_action_refill)
         else -> action
     }
 

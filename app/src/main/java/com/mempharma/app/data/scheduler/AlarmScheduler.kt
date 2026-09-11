@@ -35,5 +35,4 @@ object AlarmActions {
     const val EXTRA_OCCURRENCE = "extra_occurrence" // epoch millis of the due dose
 
     const val CHANNEL_ID = "dose_reminders"
-    const val CHANNEL_NAME = "Medicine reminders"
 }

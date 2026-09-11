@@ -60,7 +60,6 @@ class SmsAlertManager @Inject constructor(
 
     companion object {
         private const val CHANNEL_ID = "sms_alerts"
-        private const val CHANNEL_NAME = "Refill text problems"
         private const val BLOCKED_NOTIFICATION_ID = 90001
     }
 
@@ -112,7 +111,10 @@ class SmsAlertManager @Inject constructor(
                 sender.send(
                     context,
                     number,
-                    SmsTrigger.buildTestMessage(repository.patientName.first())
+                    SmsTrigger.buildTestMessage(
+                        repository.patientName.first(),
+                        SmsTexts.templates(context)
+                    )
                 ) -> SmsTestResult.Sent
                 else -> SmsTestResult.Failed
             }
@@ -138,7 +140,12 @@ class SmsAlertManager @Inject constructor(
             return
         }
 
-        if (sender.send(context, number, SmsTrigger.buildMessage(med, stage, patientName))) {
+        if (sender.send(
+                context,
+                number,
+                SmsTrigger.buildMessage(med, stage, patientName, SmsTexts.templates(context))
+            )
+        ) {
             repository.upsertReminder(SmsReminderState(med.id, stage, now))
         }
         // A failed send is deliberately not recorded, so it is retried later.
@@ -150,10 +157,10 @@ class SmsAlertManager @Inject constructor(
      */
     private fun notifyCannotSend() {
         ensureChannel()
-        val text = "Open MemPharma and allow sending texts, so your family member can be told when a medicine is running out."
+        val text = context.getString(R.string.notif_sms_blocked_text)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Refill text not sent")
+            .setContentTitle(context.getString(R.string.notif_sms_blocked_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -172,9 +179,9 @@ class SmsAlertManager @Inject constructor(
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                CHANNEL_NAME,
+                context.getString(R.string.notif_sms_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
-            ).apply { description = "Problems sending refill texts to your family member" }
+            ).apply { description = context.getString(R.string.notif_sms_channel_desc) }
         )
     }
 }

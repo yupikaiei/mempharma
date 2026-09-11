@@ -26,15 +26,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.ui.components.MedicationAvatar
 import com.mempharma.app.ui.components.RefillDialog
 import com.mempharma.app.ui.components.StatusPill
-import java.time.format.DateTimeFormatter
+import com.mempharma.app.util.TimeFormat
+import com.mempharma.app.util.rememberAppLocale
+import java.util.Locale
 
 @Composable
 fun MedicationListScreen(
@@ -56,7 +61,7 @@ fun MedicationListScreen(
             if (medications.isEmpty()) {
                 item {
                     Text(
-                        text = "Nothing here yet.\nTap \"Add a medicine\" to begin.",
+                        text = stringResource(R.string.meds_empty),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(vertical = 24.dp)
                     )
@@ -81,7 +86,7 @@ fun MedicationListScreen(
         ) {
             Icon(Icons.Filled.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Add a medicine", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.common_add_medicine), style = MaterialTheme.typography.titleMedium)
         }
     }
 
@@ -98,9 +103,9 @@ fun MedicationListScreen(
 @Composable
 private fun Header(count: Int) {
     Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
-        Text("My medicines", style = MaterialTheme.typography.headlineLarge)
+        Text(stringResource(R.string.meds_title), style = MaterialTheme.typography.headlineLarge)
         Text(
-            text = if (count == 1) "1 medicine" else "$count medicines",
+            text = pluralStringResource(R.plurals.meds_count, count, count),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -133,7 +138,12 @@ private fun MedicineRow(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${med.doseQuantity} ${med.unitLabel} • ${scheduleLabel(med)}",
+                    text = stringResource(
+                        R.string.common_dose_detail,
+                        med.doseQuantity,
+                        med.unitLabel,
+                        scheduleLabel(med, rememberAppLocale())
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant
                 )
@@ -148,25 +158,35 @@ private fun MedicineRow(
                     modifier = Modifier.height(44.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
-                    Text("Refill", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.common_refill), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
     }
 }
 
-private fun scheduleLabel(med: Medication): String {
-    val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
-    return med.times.joinToString(" · ") { it.format(timeFormat) }
-}
+private fun scheduleLabel(med: Medication, locale: Locale): String =
+    med.times.joinToString(" · ") { TimeFormat.formatLocalTime(it, locale) }
 
 @Composable
 private fun StockPill(med: Medication) {
     val scheme = MaterialTheme.colorScheme
     val (label, container, content) = when {
-        med.isOut -> Triple("0 left", scheme.errorContainer, scheme.onErrorContainer)
-        med.isLow -> Triple("Only ${med.quantity}", scheme.tertiaryContainer, scheme.onTertiaryContainer)
-        else -> Triple("${med.quantity} left", scheme.surfaceVariant, scheme.onSurfaceVariant)
+        med.isOut -> Triple(
+            stringResource(R.string.meds_stock_out),
+            scheme.errorContainer,
+            scheme.onErrorContainer
+        )
+        med.isLow -> Triple(
+            stringResource(R.string.meds_stock_low, med.quantity),
+            scheme.tertiaryContainer,
+            scheme.onTertiaryContainer
+        )
+        else -> Triple(
+            stringResource(R.string.meds_stock_normal, med.quantity),
+            scheme.surfaceVariant,
+            scheme.onSurfaceVariant
+        )
     }
     StatusPill(text = label, container = container, content = content)
 }

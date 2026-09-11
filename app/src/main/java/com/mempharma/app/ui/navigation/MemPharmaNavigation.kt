@@ -1,5 +1,6 @@
 package com.mempharma.app.ui.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.mempharma.app.R
 import com.mempharma.app.ui.edit.AddEditMedicationScreen
 import com.mempharma.app.ui.history.HistoryScreen
 import com.mempharma.app.ui.home.HomeScreen
@@ -42,15 +45,15 @@ private val topLevelRoutes = setOf(MemRoutes.HOME, MemRoutes.MEDS, MemRoutes.HIS
 
 private data class BottomDestination(
     val route: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector
 )
 
 private val bottomDestinations = listOf(
-    BottomDestination(MemRoutes.HOME, "Today", Icons.Filled.Home),
-    BottomDestination(MemRoutes.MEDS, "Medicines", Icons.Filled.DateRange),
-    BottomDestination(MemRoutes.HISTORY, "History", Icons.Filled.List),
-    BottomDestination(MemRoutes.SETTINGS, "Settings", Icons.Filled.Settings)
+    BottomDestination(MemRoutes.HOME, R.string.nav_today, Icons.Filled.Home),
+    BottomDestination(MemRoutes.MEDS, R.string.nav_medicines, Icons.Filled.DateRange),
+    BottomDestination(MemRoutes.HISTORY, R.string.nav_history, Icons.Filled.List),
+    BottomDestination(MemRoutes.SETTINGS, R.string.nav_settings, Icons.Filled.Settings)
 )
 
 /** Top-level navigation scaffold with the big, always-labelled bottom bar. */
@@ -78,7 +81,7 @@ fun MemPharmaApp(modifier: Modifier = Modifier) {
                                 }
                             },
                             icon = { Icon(dest.icon, contentDescription = null) },
-                            label = { Text(dest.label) }
+                            label = { Text(stringResource(dest.labelRes)) }
                         )
                     }
                 }

@@ -41,9 +41,9 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
   and the chosen alert sound (`AlertTone`). Read by `AlarmRingerService` so reminders ring with
   the tone the person picked.
 - **`data/sms/SmsAlertManager`** — the optional *"text a family member"* refill alerts. The
-  decision rules are pure (`domain/SmsTrigger`), the chosen contact and send-history live in a
-  DataStore (`SmsAlertRepository`, so no Room migration), and sending is triggered both straight
-  after a dose is recorded and by a daily `SmsAlertWorker`.
+  decision rules are pure (`domain/SmsTrigger`), the chosen contact, optional patient name and
+  send-history live in a DataStore (`SmsAlertRepository`, so no Room migration), and sending is
+  triggered both straight after a dose is recorded and by a daily `SmsAlertWorker`.
 - **BroadcastReceivers** are system-instantiated, so they reach Hilt through
   `AppGraph.from(context)` (`@EntryPoint`), not constructor injection.
 - **Screens** each own a `@HiltViewModel`; navigation is a single `NavHost`
@@ -59,12 +59,16 @@ stock drops (dose recorded)              daily SmsAlertWorker
       └─► TrackingRepository.recordTaken         └─► SmsAlertManager.evaluateAll()
                     └────────────► SmsAlertManager ────────────┘
                                        │  pure rules: domain/SmsTrigger
-                                       ├─ SmsAlertRepository (contact + what was already sent)
+                                       ├─ SmsAlertRepository (contact, patient name, what was sent)
                                        └─ SmsSender (SmsManager, multipart)
 ```
 
 - **Per-medicine level**: the Add/Edit medicine screen sets `lowStockThreshold`
   ("text my family member when this many are left"). A medicine that is switched off is ignored.
+- **Patient name (optional)**: `Settings → Text a family member` also takes an optional patient
+  name (stored in the same DataStore, independent of the chosen contact). It is woven into every
+  message — `John's Metformin…`, or `James' Metformin…` when the name already ends in an *s*.
+  Left blank, the original wording is used unchanged.
 - **Escalation**: crossing into `LOW` sends once; reaching `OUT` sends again immediately.
 - **Repeat**: every 3 days while the medicine stays low/empty (`SmsTrigger.REPEAT_INTERVAL_MILLIS`).
 - **Reset**: recording a refill (`TrackingRepository.refill`) clears the record, so the next
@@ -232,7 +236,8 @@ allow "install unknown apps" once. Subsequent builds update in place.
 ## 7. Testing & QA checklist
 
 - [ ] `./gradlew :app:testDebugUnitTest` — green.
-- [ ] Settings → Text a family member: choose a contact, allow sending texts, **Send a test text**.
+- [ ] Settings → Text a family member: type a patient name (the example updates), choose a contact,
+      allow sending texts, **Send a test text** (it should include the patient name).
 - [ ] Edit a medicine's "text my family member when this many are left" and take doses until it
       reaches that level → one text; take one more to 0 → a second text; refill → no repeat for
       3 days.

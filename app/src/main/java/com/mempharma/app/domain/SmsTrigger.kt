@@ -90,12 +90,61 @@ object SmsTrigger {
         return nowEpochMillis - previous.lastSentEpochMillis >= repeatIntervalMillis
     }
 
-    /** The plain-language message the chosen contact receives. */
-    fun buildMessage(med: Medication, stage: SmsStage): String = when (stage) {
-        SmsStage.OUT ->
-            "MemPharma: ${med.name} has run out. Please arrange a refill."
-        SmsStage.LOW ->
-            "MemPharma: ${med.name} is almost finished — only ${med.quantity} ${med.unitLabel} left. " +
-                "Please arrange a refill."
+    /**
+     * The plain-language message the chosen contact receives.
+     *
+     * [patientName] is the optional name entered in Settings. When it is blank
+     * the wording is exactly the same as before the setting existed, so the
+     * feature keeps working without it.
+     */
+    fun buildMessage(med: Medication, stage: SmsStage, patientName: String = ""): String =
+        buildMessage(
+            medicineName = med.name,
+            quantity = med.quantity,
+            unitLabel = med.unitLabel,
+            stage = stage,
+            patientName = patientName
+        )
+
+    /**
+     * Same as [buildMessage] but from raw values, so the Settings screen can
+     * preview the exact wording with a sample medicine.
+     */
+    fun buildMessage(
+        medicineName: String,
+        quantity: Int,
+        unitLabel: String,
+        stage: SmsStage,
+        patientName: String = ""
+    ): String {
+        val subject = ownedNoun(medicineName, patientName)
+        return when (stage) {
+            SmsStage.OUT ->
+                "MemPharma: $subject has run out. Please arrange a refill."
+            SmsStage.LOW ->
+                "MemPharma: $subject is almost finished — only $quantity $unitLabel left. " +
+                    "Please arrange a refill."
+        }
+    }
+
+    /**
+     * The one-off "Send a test text" message. Uses the same patient name so the
+     * person sees exactly who the real alerts will mention.
+     */
+    fun buildTestMessage(patientName: String = ""): String {
+        val who = ownedNoun("medicines", patientName)
+        return "MemPharma test text: refill alerts for $who that are running low will arrive here."
+    }
+
+    /**
+     * "Metformin" when no name is given, otherwise the medicine "belongs to" the
+     * patient: "John's Metformin", or "James' Metformin" when the name already
+     * ends in an s.
+     */
+    private fun ownedNoun(noun: String, patientName: String): String {
+        val name = patientName.trim()
+        if (name.isEmpty()) return noun
+        val possessive = if (name.endsWith("s", ignoreCase = true)) "$name'" else "$name's"
+        return "$possessive $noun"
     }
 }

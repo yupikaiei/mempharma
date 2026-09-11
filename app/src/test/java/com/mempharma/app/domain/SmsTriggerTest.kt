@@ -125,6 +125,49 @@ class SmsTriggerTest {
         assertTrue(message.contains("run out", ignoreCase = true))
     }
 
+    @Test
+    fun buildMessage_includesPatientNamePossessively() {
+        val message = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, patientName = "John")
+        assertTrue(message.contains("John's Paracetamol"))
+        assertTrue(message.contains("2 pill(s)"))
+    }
+
+    @Test
+    fun buildMessage_usesApostropheOnlyWhenNameEndsInS() {
+        val message = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, patientName = "James")
+        assertTrue(message.contains("James' Paracetamol"))
+    }
+
+    @Test
+    fun buildMessage_trimsAndFallsBackWhenNameIsBlank() {
+        val blank = SmsTrigger.buildMessage(med(quantity = 2), SmsStage.LOW, patientName = "   ")
+        assertTrue(blank.contains("MemPharma: Paracetamol is almost finished"))
+        assertFalse(blank.contains("'s"))
+    }
+
+    @Test
+    fun buildMessage_includesPatientNameForOutToo() {
+        val message = SmsTrigger.buildMessage(med(quantity = 0), SmsStage.OUT, patientName = "John")
+        assertTrue(message.contains("John's Paracetamol has run out"))
+    }
+
+    // --- test message -------------------------------------------------------
+
+    @Test
+    fun buildTestMessage_includesPatientName() {
+        val message = SmsTrigger.buildTestMessage("John")
+        assertTrue(message.contains("John's medicines"))
+    }
+
+    @Test
+    fun buildTestMessage_fallsBackWhenNameIsBlank() {
+        val message = SmsTrigger.buildTestMessage("  ")
+        assertEquals(
+            "MemPharma test text: refill alerts for medicines that are running low will arrive here.",
+            message
+        )
+    }
+
     // --- persisted state -----------------------------------------------------
 
     @Test

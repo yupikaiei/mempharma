@@ -62,8 +62,6 @@ class SmsAlertManager @Inject constructor(
         private const val CHANNEL_ID = "sms_alerts"
         private const val CHANNEL_NAME = "Refill text problems"
         private const val BLOCKED_NOTIFICATION_ID = 90001
-        private const val TEST_MESSAGE =
-            "MemPharma test text: refill alerts for medicines that are running low will arrive here."
     }
 
     private val mutex = Mutex()
@@ -72,7 +70,8 @@ class SmsAlertManager @Inject constructor(
     suspend fun evaluateAll() {
         mutex.withLock {
             val number = readyNumber() ?: return@withLock
-            medicationDao.getAll().forEach { evaluateLocked(it, number) }
+            val patientName = repository.patientName.first()
+            medicationDao.getAll().forEach { evaluateLocked(it, number, patientName) }
         }
     }
 
@@ -80,7 +79,7 @@ class SmsAlertManager @Inject constructor(
     suspend fun onStockChanged(med: Medication) {
         mutex.withLock {
             val number = readyNumber() ?: return@withLock
-            evaluateLocked(med, number)
+            evaluateLocked(med, number, repository.patientName.first())
         }
     }
 
@@ -110,7 +109,11 @@ class SmsAlertManager @Inject constructor(
             when {
                 number.isBlank() -> SmsTestResult.NoContact
                 !sender.canSend(context) -> SmsTestResult.NoPermission
-                sender.send(context, number, TEST_MESSAGE) -> SmsTestResult.Sent
+                sender.send(
+                    context,
+                    number,
+                    SmsTrigger.buildTestMessage(repository.patientName.first())
+                ) -> SmsTestResult.Sent
                 else -> SmsTestResult.Failed
             }
         }
@@ -123,7 +126,7 @@ class SmsAlertManager @Inject constructor(
         return number.takeIf { it.isNotBlank() }
     }
 
-    private suspend fun evaluateLocked(med: Medication, number: String) {
+    private suspend fun evaluateLocked(med: Medication, number: String, patientName: String) {
         val stage = SmsTrigger.stageFor(med) ?: return
         val now = System.currentTimeMillis()
         if (!SmsTrigger.shouldSend(med, repository.reminderFor(med.id), now)) return
@@ -135,7 +138,7 @@ class SmsAlertManager @Inject constructor(
             return
         }
 
-        if (sender.send(context, number, SmsTrigger.buildMessage(med, stage))) {
+        if (sender.send(context, number, SmsTrigger.buildMessage(med, stage, patientName))) {
             repository.upsertReminder(SmsReminderState(med.id, stage, now))
         }
         // A failed send is deliberately not recorded, so it is retried later.

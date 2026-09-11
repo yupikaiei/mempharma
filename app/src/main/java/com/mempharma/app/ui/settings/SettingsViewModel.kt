@@ -56,6 +56,16 @@ class SettingsViewModel @Inject constructor(
         initialValue = ""
     )
 
+    /**
+     * Optional name of the person the medicines are for, added to the refill
+     * texts ("John's Metformin…"). Blank keeps the original wording.
+     */
+    val patientName: StateFlow<String> = smsAlertRepository.patientName.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ""
+    )
+
     private val _smsTestResult = MutableStateFlow<SmsTestResult?>(null)
 
     /** Outcome of the last "Send a test text" tap, or null while none was made. */
@@ -88,6 +98,10 @@ class SettingsViewModel @Inject constructor(
             smsAlertRepository.clearContact()
             _smsTestResult.value = null
         }
+    }
+
+    fun setPatientName(name: String) {
+        viewModelScope.launch { smsAlertRepository.setPatientName(name) }
     }
 
     fun sendTestSms() {

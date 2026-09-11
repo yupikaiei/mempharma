@@ -33,6 +33,7 @@ class SmsAlertRepository @Inject constructor(
         private val KEY_ENABLED = booleanPreferencesKey("enabled")
         private val KEY_CONTACT_NAME = stringPreferencesKey("contact_name")
         private val KEY_CONTACT_NUMBER = stringPreferencesKey("contact_number")
+        private val KEY_PATIENT_NAME = stringPreferencesKey("patient_name")
         private val KEY_REMINDERS = stringSetPreferencesKey("reminders")
     }
 
@@ -44,6 +45,12 @@ class SmsAlertRepository @Inject constructor(
 
     /** Phone number the texts go to (blank = nobody chosen). */
     val contactNumber: Flow<String> = context.smsDataStore.data.map { it[KEY_CONTACT_NUMBER] ?: "" }
+
+    /**
+     * Optional name of the person the medicines are for. Included in the refill
+     * texts ("John's Metformin…"); blank keeps the original wording.
+     */
+    val patientName: Flow<String> = context.smsDataStore.data.map { it[KEY_PATIENT_NAME] ?: "" }
 
     /** What we last sent about each medicine, keyed by medicine id. */
     val reminders: Flow<List<SmsReminderState>> = context.smsDataStore.data
@@ -60,6 +67,11 @@ class SmsAlertRepository @Inject constructor(
             prefs[KEY_CONTACT_NAME] = name
             prefs[KEY_CONTACT_NUMBER] = number
         }
+    }
+
+    /** Save (or clear) the optional patient name used in the messages. */
+    suspend fun setPatientName(name: String) {
+        context.smsDataStore.edit { it[KEY_PATIENT_NAME] = name.trim() }
     }
 
     /** Forget the chosen contact (and what we told them). */

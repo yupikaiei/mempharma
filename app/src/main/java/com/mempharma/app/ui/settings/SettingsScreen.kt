@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -53,8 +54,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -68,6 +72,8 @@ import com.mempharma.app.data.settings.AlertTone
 import com.mempharma.app.data.settings.SettingsRepository
 import com.mempharma.app.data.settings.parseAlertTone
 import com.mempharma.app.data.sms.SmsTestResult
+import com.mempharma.app.domain.SmsStage
+import com.mempharma.app.domain.SmsTrigger
 import kotlinx.coroutines.delay
 
 private data class FontOption(val label: String, val scale: Float)
@@ -86,6 +92,7 @@ fun SettingsScreen() {
     val smsEnabled by viewModel.smsEnabled.collectAsStateWithLifecycle()
     val smsContactName by viewModel.smsContactName.collectAsStateWithLifecycle()
     val smsContactNumber by viewModel.smsContactNumber.collectAsStateWithLifecycle()
+    val patientName by viewModel.patientName.collectAsStateWithLifecycle()
     val smsTestResult by viewModel.smsTestResult.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scheme = MaterialTheme.colorScheme
@@ -146,10 +153,12 @@ fun SettingsScreen() {
             enabled = smsEnabled,
             contactName = smsContactName,
             contactNumber = smsContactNumber,
+            patientName = patientName,
             testResult = smsTestResult,
             onEnabledChange = viewModel::setSmsEnabled,
             onContactPicked = viewModel::setSmsContact,
             onClearContact = viewModel::clearSmsContact,
+            onPatientNameChange = viewModel::setPatientName,
             onSendTest = viewModel::sendTestSms
         )
 
@@ -444,10 +453,12 @@ private fun SmsAlertCard(
     enabled: Boolean,
     contactName: String,
     contactNumber: String,
+    patientName: String,
     testResult: SmsTestResult?,
     onEnabledChange: (Boolean) -> Unit,
     onContactPicked: (String, String) -> Unit,
     onClearContact: () -> Unit,
+    onPatientNameChange: (String) -> Unit,
     onSendTest: () -> Unit
 ) {
     val context = LocalContext.current
@@ -483,6 +494,11 @@ private fun SmsAlertCard(
     var typingNumber by remember { mutableStateOf(false) }
     var typedNumber by remember { mutableStateOf("") }
 
+    // Kept locally while typing so every keystroke does not round-trip through
+    // DataStore (which would move the cursor); saved when focus is lost.
+    var typedName by remember(patientName) { mutableStateOf(patientName) }
+    val focusManager = LocalFocusManager.current
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -501,6 +517,32 @@ private fun SmsAlertCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = typedName,
+                onValueChange = { typedName = it.take(40) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focus ->
+                        if (!focus.isFocused && typedName.trim() != patientName) {
+                            onPatientNameChange(typedName)
+                        }
+                    },
+                singleLine = true,
+                label = { Text("Patient name (optional)") },
+                placeholder = { Text("e.g. John") },
+                supportingText = { Text("Used in the text, e.g. \"John's Metformin\".") },
+                textStyle = MaterialTheme.typography.bodyLarge,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        onPatientNameChange(typedName)
+                        focusManager.clearFocus()
+                    }
+                )
+            )
+
             Spacer(Modifier.height(12.dp))
 
             Row(
@@ -610,8 +652,13 @@ private fun SmsAlertCard(
                     color = scheme.onSurfaceVariant
                 )
                 Text(
-                    "MemPharma: Blood pressure pill is almost finished — only 3 pill(s) left. " +
-                        "Please arrange a refill.",
+                    SmsTrigger.buildMessage(
+                        medicineName = "Blood pressure pill",
+                        quantity = 3,
+                        unitLabel = "pill(s)",
+                        stage = SmsStage.LOW,
+                        patientName = typedName
+                    ),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 OutlinedButton(

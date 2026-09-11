@@ -3,6 +3,7 @@ package com.mempharma.app.data.repo
 import com.mempharma.app.data.local.dao.DoseEventDao
 import com.mempharma.app.data.local.dao.MedicationDao
 import com.mempharma.app.data.local.entity.Medication
+import com.mempharma.app.data.refill.RefillAmountStore
 import com.mempharma.app.data.scheduler.AlarmScheduler
 import com.mempharma.app.data.sms.SmsAlertManager
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +21,8 @@ class MedicationRepository @Inject constructor(
     private val doseEventDao: DoseEventDao,
     private val scheduler: AlarmScheduler,
     private val activeAlertRepository: ActiveAlertRepository,
-    private val smsAlertManager: SmsAlertManager
+    private val smsAlertManager: SmsAlertManager,
+    private val refillAmountStore: RefillAmountStore
 ) {
 
     val all: Flow<List<Medication>> = medicationDao.observeAll()
@@ -54,6 +56,7 @@ class MedicationRepository @Inject constructor(
         doseEventDao.deleteForMedication(id) // remove this medicine's audit trail too
         activeAlertRepository.removeForMedication(id) // drop any pending alert for it
         smsAlertManager.resetFor(id) // forget what the family member was told
+        refillAmountStore.forget(id) // and any remembered refill amount
         medicationDao.delete(id)
         scheduler.cancelMedication(med)
     }

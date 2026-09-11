@@ -5,6 +5,7 @@ import com.mempharma.app.data.local.dao.MedicationDao
 import com.mempharma.app.data.local.entity.DoseAction
 import com.mempharma.app.data.local.entity.DoseEvent
 import com.mempharma.app.data.local.entity.Medication
+import com.mempharma.app.data.refill.RefillAmountStore
 import com.mempharma.app.data.scheduler.AlarmScheduler
 import com.mempharma.app.data.sms.SmsAlertManager
 import com.mempharma.app.domain.DoseEngine
@@ -25,7 +26,8 @@ class TrackingRepository @Inject constructor(
     private val doseEventDao: DoseEventDao,
     private val scheduler: AlarmScheduler,
     private val activeAlertRepository: ActiveAlertRepository,
-    private val smsAlertManager: SmsAlertManager
+    private val smsAlertManager: SmsAlertManager,
+    private val refillAmountStore: RefillAmountStore
 ) {
 
     /** Whole local history/audit log, newest first. */
@@ -165,6 +167,12 @@ class TrackingRepository @Inject constructor(
         if (SmsTrigger.stageFor(med.copy(quantity = newQuantity)) == null) {
             smsAlertManager.resetFor(med.id)
         }
+        // Remember this amount so the quick refill dialog can pre-fill it next time.
+        refillAmountStore.remember(med.id, addQuantity)
         return newQuantity
     }
+
+    /** The amount added the last time this medicine was refilled, or null if never. */
+    suspend fun lastRefillAmount(medicationId: Long): Int? =
+        refillAmountStore.lastAmount(medicationId)
 }

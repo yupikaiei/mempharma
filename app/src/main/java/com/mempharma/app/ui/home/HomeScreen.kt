@@ -38,6 +38,7 @@ import com.mempharma.app.data.scheduler.AlarmActions
 import com.mempharma.app.data.scheduler.AlarmRingerService
 import com.mempharma.app.data.scheduler.Notifications
 import com.mempharma.app.ui.components.MedicationAvatar
+import com.mempharma.app.ui.components.RefillDialog
 import com.mempharma.app.ui.components.StatusPill
 import com.mempharma.app.util.TimeFormat
 import java.time.Instant
@@ -52,6 +53,7 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val refillTarget by viewModel.refillTarget.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LazyColumn(
@@ -73,6 +75,7 @@ fun HomeScreen(
             DoseCard(
                 card = card,
                 onEdit = onEdit,
+                onRefill = { viewModel.startRefill(card.med) },
                 onTake = { occurrence ->
                     viewModel.takeDose(card.med, occurrence)
                     stopActiveAlarm(context, occurrence, closeAlarmScreen = true)
@@ -85,6 +88,15 @@ fun HomeScreen(
         }
 
         item { AddMedicineButton(onAdd) }
+    }
+
+    refillTarget?.let { target ->
+        RefillDialog(
+            med = target.med,
+            initialAmount = target.initialAmount,
+            onConfirm = viewModel::confirmRefill,
+            onDismiss = viewModel::cancelRefill
+        )
     }
 }
 
@@ -200,6 +212,7 @@ private fun AddMedicineButton(onAdd: () -> Unit) {
 private fun DoseCard(
     card: HomeMedCard,
     onEdit: (Long) -> Unit,
+    onRefill: () -> Unit,
     onTake: (Long) -> Unit,
     onMute: (Long) -> Unit
 ) {
@@ -294,16 +307,6 @@ private fun DoseCard(
                         color = contentColor,
                         fontWeight = FontWeight.SemiBold
                     )
-                    if (med.isOut) {
-                        OutlinedButton(
-                            onClick = { onEdit(med.id) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                        ) {
-                            Text("Refill medicine", style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
                 }
                 else -> {
                     Text(
@@ -312,6 +315,16 @@ private fun DoseCard(
                         color = contentColor.copy(alpha = 0.8f)
                     )
                 }
+            }
+
+            // Refilling is always one tap away, whether the bottle is empty or not.
+            OutlinedButton(
+                onClick = onRefill,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text("Refill", style = MaterialTheme.typography.titleMedium)
             }
         }
     }

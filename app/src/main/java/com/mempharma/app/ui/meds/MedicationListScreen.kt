@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.ui.components.MedicationAvatar
+import com.mempharma.app.ui.components.RefillDialog
 import com.mempharma.app.ui.components.StatusPill
 import java.time.format.DateTimeFormatter
 
@@ -41,6 +43,7 @@ fun MedicationListScreen(
 ) {
     val viewModel: MedListViewModel = hiltViewModel()
     val medications by viewModel.medications.collectAsStateWithLifecycle()
+    val refillTarget by viewModel.refillTarget.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Header(medications.size)
@@ -60,7 +63,11 @@ fun MedicationListScreen(
                 }
             }
             items(medications, key = { it.id }) { med ->
-                MedicineRow(med = med, onClick = { onEdit(med.id) })
+                MedicineRow(
+                    med = med,
+                    onClick = { onEdit(med.id) },
+                    onRefill = { viewModel.startRefill(med) }
+                )
             }
         }
 
@@ -77,6 +84,15 @@ fun MedicationListScreen(
             Text("Add a medicine", style = MaterialTheme.typography.titleMedium)
         }
     }
+
+    refillTarget?.let { target ->
+        RefillDialog(
+            med = target.med,
+            initialAmount = target.initialAmount,
+            onConfirm = viewModel::confirmRefill,
+            onDismiss = viewModel::cancelRefill
+        )
+    }
 }
 
 @Composable
@@ -92,7 +108,11 @@ private fun Header(count: Int) {
 }
 
 @Composable
-private fun MedicineRow(med: Medication, onClick: () -> Unit) {
+private fun MedicineRow(
+    med: Medication,
+    onClick: () -> Unit,
+    onRefill: () -> Unit
+) {
     val scheme = MaterialTheme.colorScheme
     Card(
         onClick = onClick,
@@ -118,7 +138,19 @@ private fun MedicineRow(med: Medication, onClick: () -> Unit) {
                     color = scheme.onSurfaceVariant
                 )
             }
-            StockPill(med)
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StockPill(med)
+                OutlinedButton(
+                    onClick = onRefill,
+                    modifier = Modifier.height(44.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    Text("Refill", style = MaterialTheme.typography.labelLarge)
+                }
+            }
         }
     }
 }

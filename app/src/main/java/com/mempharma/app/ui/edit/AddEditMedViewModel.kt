@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.repo.MedicationRepository
+import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.domain.DoseEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
@@ -48,7 +49,8 @@ private const val DEFAULT_LOW_STOCK_THRESHOLD = 3
 @HiltViewModel
 class AddEditMedViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: MedicationRepository
+    private val repository: MedicationRepository,
+    private val trackingRepository: TrackingRepository
 ) : ViewModel() {
 
     private val medId: Long = savedStateHandle.get<Long>("medId") ?: 0L
@@ -124,27 +126,40 @@ class AddEditMedViewModel @Inject constructor(
 
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
+            val newQuantity = qty!!
             val times = DoseEngine.parseTimes(
                 DoseEngine.toTimesCsv(
                     s.selectedTimes.map { java.time.LocalTime.of(it / 60, it % 60) }.sorted()
                 )
             )
+            val existing = if (medId > 0) repository.get(medId) else null
             val med = Medication(
                 id = if (medId > 0) medId else 0L,
                 name = name,
                 colorIndex = s.colorIndex,
                 doseQuantity = doseQty!!,
                 unitLabel = s.unitLabel.ifBlank { "pill(s)" },
-                quantity = qty!!,
-                startDateEpochDay = if (medId > 0) {
-                    (repository.get(medId)?.startDateEpochDay ?: LocalDate.now().toEpochDay())
-                } else {
-                    LocalDate.now().toEpochDay()
-                },
+                quantity = newQuantity,
+                startDateEpochDay = existing?.startDateEpochDay ?: LocalDate.now().toEpochDay(),
                 timesCsv = times.joinToString(",") { it.toString() },
                 lowStockThreshold = lowThreshold
             )
-            if (medId > 0) repository.update(med) else repository.create(med)
+            when {
+                medId <= 0 -> repository.create(med)
+                // Raising the stock is a refill: funnel it through the same path as
+                // the quick refill button so the audit log, reminders and family
+                // alerts all stay in step (and the amount is remembered).
+                existing != null && newQuantity > existing.quantity -> {
+                    val withoutQuantity = med.copy(quantity = existing.quantity)
+                    repository.update(withoutQuantity)
+                    trackingRepository.refill(
+                        withoutQuantity,
+                        newQuantity - existing.quantity,
+                        System.currentTimeMillis()
+                    )
+                }
+                else -> repository.update(med)
+            }
             _state.update { it.copy(loading = false, finished = true) }
         }
     }

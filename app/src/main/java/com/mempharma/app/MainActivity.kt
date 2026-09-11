@@ -1,6 +1,7 @@
 package com.mempharma.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -30,6 +31,7 @@ import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.data.scheduler.AlarmActions
 import com.mempharma.app.data.scheduler.AlarmScheduler
 import com.mempharma.app.data.settings.SettingsRepository
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.ui.alarm.AlarmActivity
 import com.mempharma.app.ui.navigation.MemPharmaApp
 import com.mempharma.app.ui.theme.MemPharmaTheme
@@ -48,6 +50,14 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var tracking: TrackingRepository
+
+    /**
+     * Attach with the language chosen in Settings so every string this screen
+     * shows (and the dates it formats) already follows that choice.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withAppLanguage())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

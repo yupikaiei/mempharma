@@ -2,6 +2,7 @@ package com.mempharma.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mempharma.app.data.settings.LanguageStore
 import com.mempharma.app.data.settings.SettingsRepository
 import com.mempharma.app.data.sms.SmsAlertManager
 import com.mempharma.app.data.sms.SmsAlertRepository
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
+    private val languageStore: LanguageStore,
     private val smsAlertRepository: SmsAlertRepository,
     private val smsAlertManager: SmsAlertManager
 ) : ViewModel() {
@@ -34,6 +36,9 @@ class SettingsViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = ""
     )
+
+    /** The language chosen in Settings ("system" means "follow the phone"). */
+    val language: StateFlow<String> = languageStore.language
 
     /** Whether refill texts to the family member are switched on. */
     val smsEnabled: StateFlow<Boolean> = smsAlertRepository.enabled.stateIn(
@@ -77,6 +82,11 @@ class SettingsViewModel @Inject constructor(
 
     fun setAlertRingtone(value: String) {
         viewModelScope.launch { settingsRepository.setAlertRingtone(value) }
+    }
+
+    /** Remember the language choice; the screen re-creates itself to apply it. */
+    fun setLanguage(tag: String) {
+        languageStore.select(tag)
     }
 
     fun setSmsEnabled(value: Boolean) {

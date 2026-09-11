@@ -5,6 +5,7 @@ import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.DoseAction
 import com.mempharma.app.data.local.entity.DoseEvent
 import com.mempharma.app.data.local.entity.Medication
+import com.mempharma.app.data.settings.withAppLanguage
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -26,11 +27,13 @@ object ExportUtils {
      * Safe to call from a background thread only.
      */
     fun buildCsvFile(
-        context: Context,
+        appContext: Context,
         meds: List<Medication>,
         events: List<DoseEvent>,
         zone: ZoneId = ZoneId.systemDefault()
     ): File {
+        // Headers and labels follow the language chosen in Settings.
+        val context = appContext.withAppLanguage()
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
         val file = File(dir, "mempharma-history-${System.currentTimeMillis()}.csv")
         val medsById = meds.associateBy { it.id }

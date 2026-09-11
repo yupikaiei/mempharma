@@ -1,16 +1,28 @@
 package com.mempharma.app
 
 import android.app.Application
+import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.mempharma.app.data.scheduler.Notifications
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.data.sms.SmsAlertWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
 class MemPharmaApp : Application() {
+
+    /**
+     * Apply the language chosen in Settings before anything else exists, so the
+     * application's own resources — used by repositories, notifications and the
+     * texts sent to a family member — already resolve in that language.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withAppLanguage())
+    }
+
     override fun onCreate() {
         super.onCreate()
         // Create the high-priority notification channel up front.

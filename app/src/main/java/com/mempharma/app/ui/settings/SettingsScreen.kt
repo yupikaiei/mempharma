@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlarmManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.Ringtone
@@ -78,6 +79,7 @@ import com.mempharma.app.data.sms.SmsTestResult
 import com.mempharma.app.data.sms.SmsTexts
 import com.mempharma.app.domain.SmsStage
 import com.mempharma.app.domain.SmsTrigger
+import com.mempharma.app.util.AppLocale
 import kotlinx.coroutines.delay
 
 private data class FontOption(@StringRes val labelRes: Int, val scale: Float)
@@ -88,11 +90,20 @@ private val fontOptions = listOf(
     FontOption(R.string.settings_font_extra, SettingsRepository.FONT_EXTRA_LARGE)
 )
 
+private data class LanguageOption(val tag: String, @StringRes val labelRes: Int)
+
+private val languageOptions = listOf(
+    LanguageOption(AppLocale.SYSTEM, R.string.settings_language_system),
+    LanguageOption(AppLocale.PORTUGUESE, R.string.settings_language_portuguese),
+    LanguageOption(AppLocale.ENGLISH, R.string.settings_language_english)
+)
+
 @Composable
 fun SettingsScreen() {
     val viewModel: SettingsViewModel = hiltViewModel()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val alertRingtone by viewModel.alertRingtone.collectAsStateWithLifecycle()
+    val language by viewModel.language.collectAsStateWithLifecycle()
     val smsEnabled by viewModel.smsEnabled.collectAsStateWithLifecycle()
     val smsContactName by viewModel.smsContactName.collectAsStateWithLifecycle()
     val smsContactNumber by viewModel.smsContactNumber.collectAsStateWithLifecycle()
@@ -147,6 +158,19 @@ fun SettingsScreen() {
             }
         }
 
+        // --- Language ---
+        LanguageCard(
+            selected = language,
+            onSelect = { tag ->
+                if (tag != language) {
+                    viewModel.setLanguage(tag)
+                    // Re-create the screen so the new language is applied to
+                    // every resource, including the dates we format ourselves.
+                    context.findActivity()?.recreate()
+                }
+            }
+        )
+
         // --- Reminders & alerts ---
         ReminderSettingsCard(context)
 
@@ -196,6 +220,68 @@ fun SettingsScreen() {
             }
         }
     }
+}
+
+/**
+ * Lets the person pin the app's language instead of following the phone.
+ * [onSelect] re-creates the screen so the choice applies everywhere at once.
+ */
+@Composable
+private fun LanguageCard(
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.settings_language_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                stringResource(R.string.settings_language_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            languageOptions.forEach { option ->
+                val isSelected = selected == option.tag
+                Button(
+                    onClick = { onSelect(option.tag) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) scheme.secondaryContainer else scheme.surfaceVariant,
+                        contentColor = if (isSelected) scheme.onSecondaryContainer else scheme.onSurfaceVariant
+                    )
+                ) {
+                    if (isSelected) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(stringResource(option.labelRes), style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The [Activity] hosting this composition, so a language change can be applied
+ * by re-creating it. [LocalContext] can be a wrapper around the activity, hence
+ * the unwrapping loop.
+ */
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
 }
 
 @Composable

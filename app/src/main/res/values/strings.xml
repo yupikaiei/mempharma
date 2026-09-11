@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Portuguese (Portugal) — the app's default language. This is the fallback for
-     every phone whose language is not English (English lives in values-en). -->
+     every phone whose language is not English, unless a language is pinned in
+     Settings (English lives in values-en). -->
 <resources>
     <string name="app_name">MemPharma</string>
 
@@ -118,6 +119,12 @@
     <string name="settings_font_standard">Normal</string>
     <string name="settings_font_large">Grande</string>
     <string name="settings_font_extra">Muito grande</string>
+    <string name="settings_language_title">Idioma</string>
+    <string name="settings_language_subtitle">Escolha a língua da aplicação.</string>
+    <string name="settings_language_system">Igual ao telemóvel</string>
+    <!-- Shown in their own language, so they are never translated. -->
+    <string name="settings_language_portuguese" translatable="false">Português</string>
+    <string name="settings_language_english" translatable="false">English</string>
     <string name="settings_about_title">Acerca</string>
     <string name="settings_about_version">MemPharma • versão %1$s</string>
     <string name="settings_about_privacy">Tudo é guardado apenas neste dispositivo. Não é necessária qualquer conta e nada é enviado para a internet.</string>

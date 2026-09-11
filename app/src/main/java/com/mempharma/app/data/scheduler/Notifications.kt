@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.ui.alarm.AlarmActivity
 
 /**
@@ -35,8 +36,10 @@ object Notifications {
     /** Stable per-occurrence id used for [NotificationManager.notify]/[cancel]. */
     fun notificationId(occurrence: Long): Int = (occurrence / 1000L).toInt()
 
-    fun ensureChannels(context: Context) {
+    fun ensureChannels(appContext: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Channel text follows the language chosen in Settings.
+            val context = appContext.withAppLanguage()
             val channel = NotificationChannel(
                 AlarmActions.CHANNEL_ID,
                 context.getString(R.string.notif_channel_reminders_name),
@@ -68,7 +71,10 @@ object Notifications {
      * The ongoing, full-screen alarm notification shown by the ringer service.
      * No default sound here — the service loops the alarm tone until actioned.
      */
-    fun buildAlarmNotification(context: Context, med: Medication, occurrence: Long): Notification {
+    fun buildAlarmNotification(appContext: Context, med: Medication, occurrence: Long): Notification {
+        // Resolve the wording in the language chosen in Settings, read fresh so a
+        // change made in the same session is reflected straight away.
+        val context = appContext.withAppLanguage()
         ensureChannels(context)
 
         // Tapping the notification body goes straight to the full-screen alert, so

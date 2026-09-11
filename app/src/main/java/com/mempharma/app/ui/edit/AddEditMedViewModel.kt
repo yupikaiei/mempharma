@@ -9,6 +9,7 @@ import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.repo.MedicationRepository
 import com.mempharma.app.data.repo.TrackingRepository
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.domain.DoseEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -60,10 +61,14 @@ class AddEditMedViewModel @Inject constructor(
 
     private val medId: Long = savedStateHandle.get<Long>("medId") ?: 0L
 
+    /** The default unit label, in the language chosen in Settings. */
+    private fun defaultUnitLabel(): String =
+        context.withAppLanguage().getString(R.string.unit_pill_default)
+
     private val _state = MutableStateFlow(
         AddEditState(
             isEditing = medId > 0L,
-            unitLabel = context.getString(R.string.unit_pill_default)
+            unitLabel = defaultUnitLabel()
         )
     )
     val state: StateFlow<AddEditState> = _state.asStateFlow()
@@ -146,7 +151,7 @@ class AddEditMedViewModel @Inject constructor(
                 name = name,
                 colorIndex = s.colorIndex,
                 doseQuantity = doseQty!!,
-                unitLabel = s.unitLabel.ifBlank { context.getString(R.string.unit_pill_default) },
+                unitLabel = s.unitLabel.ifBlank { defaultUnitLabel() },
                 quantity = newQuantity,
                 startDateEpochDay = existing?.startDateEpochDay ?: LocalDate.now().toEpochDay(),
                 timesCsv = times.joinToString(",") { it.toString() },

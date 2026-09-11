@@ -11,7 +11,7 @@ All Gradle commands use the wrapper (Gradle 8.11.1) and expect **JDK 17** and an
 export JAVA_HOME=/path/to/jdk-17
 export ANDROID_HOME=$HOME/android-sdk        # or local.properties sdk.dir
 ./gradlew :app:assembleDebug                 # fast debug build
-./gradlew :app:testDebugUnitTest             # JVM unit tests (30 tests)
+./gradlew :app:testDebugUnitTest             # JVM unit tests (48 tests)
 ./gradlew :app:assembleRelease               # R8/minified release
 ./gradlew :app:lintDebug                     # Android Lint (optional)
 ```
@@ -40,6 +40,9 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 - **`data/settings/SettingsRepository`** — DataStore-backed app settings: the global font-scale
   and the chosen alert sound (`AlertTone`). Read by `AlarmRingerService` so reminders ring with
   the tone the person picked.
+- **`data/settings/LanguageStore`** — the display language picked in Settings. Kept in a small
+  `SharedPreferences` file (deliberately not DataStore) because it must be readable
+  *synchronously* while a context attaches — see *Languages / localization* below.
 - **`data/sms/SmsAlertManager`** — the optional *"text a family member"* refill alerts. The
   decision rules are pure (`domain/SmsTrigger`), the chosen contact, optional patient name and
   send-history live in a DataStore (`SmsAlertRepository`, so no Room migration), and sending is
@@ -54,17 +57,34 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
 MemPharma ships **Portuguese (Portugal) as the default language** and keeps English:
 
 - `res/values/strings.xml` → **Portuguese (pt-PT)** — the default/fallback.
-- `res/values-en/strings.xml` → **English** — used only when the phone is set to English.
+- `res/values-en/strings.xml` → **English** — used when the phone is set to English.
 
-Nothing forces a locale, so the **displayed language can differ from the device language**
-(a French phone falls back to the Portuguese default). Because of that:
+**Settings → Language** lets the person pin the language — *Igual ao telemóvel* (the default),
+*Português* or *English* — instead of following the phone:
+
+- `data/settings/LanguageStore` persists the choice (`system` / `pt-PT` / `en`) in a small
+  `SharedPreferences` file. `AppLocale.normalise` maps anything stale or hand-edited back to
+  `system`, so a bad value can never break startup.
+- `Context.withAppLanguage()` (`data/settings/LanguageStore.kt`) reads that value and, via
+  `AppLocale.localized`, returns a context whose resources use the chosen language. The
+  `Application` and both activities call it from `attachBaseContext`, so every screen,
+  notification, refill text, audit note and CSV header follows the choice.
+- Text resolved **outside Compose** (notification titles/actions, `SmsTexts`, audit notes,
+  `ExportUtils`) goes through `Context.withAppLanguage()` too, so a change made in the same
+  session applies immediately, without waiting for a restart.
+- Changing the language re-creates the settings screen (`Activity.recreate()`), which re-runs
+  `attachBaseContext` with the new language.
+
+With *Igual ao telemóvel* nothing is forced, so the **displayed language can differ from the
+device language** (a French phone falls back to the Portuguese default). Because of that:
 
 - Never call `Locale.getDefault()` for user-visible dates/times. Use `rememberAppLocale()`
   (`util/AppLocale.kt`), which mirrors the resource fallback, and pass it to the
   locale-parameterized helpers in `util/TimeFormat.kt`.
 - Keep user-facing text in `strings.xml` only. Compose screens use `stringResource` /
   `pluralStringResource`; ViewModels expose `@StringRes Int` (e.g. `AddEditState.error`) or take
-  `@ApplicationContext` when they need a default value (`AddEditMedViewModel`, `TrackingRepository`).
+  `@ApplicationContext` and wrap it with `Context.withAppLanguage()` when they need a localized
+  default value (`AddEditMedViewModel`, `TrackingRepository`).
 - The pure rules in `domain/SmsTrigger.kt` take an `SmsTemplates` value (built from resources by
   `data/sms/SmsTexts.kt`) so the domain stays free of Android dependencies and remains unit-tested.
 - **Known limits**: notification-channel names are immutable once created (existing installs keep
@@ -196,8 +216,8 @@ version + write a real `Migration` in `AppModule` before any schema change ships
   density override) — no per-widget work needed.
 - **Settings → Alert sound** lets the person choose the reminder tone from the device's own
   alarms, ringtones and notifications (plus **Default** and **Silent**), preview it, and have it
-  persisted for the looping ringer service. Silent still vibrates and shows the full-screen alert.
-- 48dp+ touch targets, big labelled bottom navigation, high-contrast colour roles.
+  persisted for the looping ringer service. Silent still vibrates and shows the full-screen alert.- **Settings → Language** pins the app's language (*Igual ao telemóvel*, *Português*, *English*)
+  without leaving the app; it applies to every screen, notification and text.- 48dp+ touch targets, big labelled bottom navigation, high-contrast colour roles.
 - One primary action per medicine card: **"✓ I took it"**; **"Not now"** is the quiet alternative.
 - TalkBack: all icons have content descriptions / text labels; status pills carry text.
 - `MedPalette` colours chosen for contrast with white initials.

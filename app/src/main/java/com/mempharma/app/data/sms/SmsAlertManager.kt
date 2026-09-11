@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.mempharma.app.R
 import com.mempharma.app.data.local.dao.MedicationDao
 import com.mempharma.app.data.local.entity.Medication
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.domain.SmsReminderState
 import com.mempharma.app.domain.SmsTrigger
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -157,10 +158,12 @@ class SmsAlertManager @Inject constructor(
      */
     private fun notifyCannotSend() {
         ensureChannel()
-        val text = context.getString(R.string.notif_sms_blocked_text)
+        // The explanation follows the language chosen in Settings.
+        val ctx = context.withAppLanguage()
+        val text = ctx.getString(R.string.notif_sms_blocked_text)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notif_sms_blocked_title))
+            .setContentTitle(ctx.getString(R.string.notif_sms_blocked_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -176,12 +179,13 @@ class SmsAlertManager @Inject constructor(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val ctx = context.withAppLanguage()
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                context.getString(R.string.notif_sms_channel_name),
+                ctx.getString(R.string.notif_sms_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
-            ).apply { description = context.getString(R.string.notif_sms_channel_desc) }
+            ).apply { description = ctx.getString(R.string.notif_sms_channel_desc) }
         )
     }
 }

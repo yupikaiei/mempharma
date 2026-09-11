@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- English. Used when the phone is set to English; all other languages fall
-     back to the Portuguese default in res/values. -->
+<!-- English. Used either when the phone is set to English or when English is
+     picked in Settings; otherwise the Portuguese default in res/values is used. -->
 <resources>
     <string name="app_name">MemPharma</string>
 
@@ -118,6 +118,9 @@
     <string name="settings_font_standard">Standard</string>
     <string name="settings_font_large">Large</string>
     <string name="settings_font_extra">Extra large</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_subtitle">Choose the language of the app.</string>
+    <string name="settings_language_system">Same as phone</string>
     <string name="settings_about_title">About</string>
     <string name="settings_about_version">MemPharma • version %1$s</string>
     <string name="settings_about_privacy">Everything is stored only on this device. No account is needed and nothing is sent to the internet.</string>

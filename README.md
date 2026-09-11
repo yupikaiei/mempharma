@@ -22,6 +22,7 @@ Every dose reminder arrives as a clear, high-priority notification with two big 
 | 🗂️ **History & audit log** | every taken / muted / missed / refill event with timestamps |
 | 📤 **CSV export** | share the full trace (medicines + start dates + event log) via the share sheet |
 | 🔠 **Accessible by default** | large type, 48dp+ touch targets, TalkBack friendly, adjustable text size |
+| 🌍 **Language** | Portuguese or English, or follow the phone — picked in Settings |
 | 📲 **Easy installs** | every push to `main` produces a signed APK on GitHub Releases |
 
 ## Technology

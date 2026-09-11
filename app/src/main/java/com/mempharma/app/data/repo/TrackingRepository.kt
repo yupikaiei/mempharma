@@ -1,6 +1,7 @@
 package com.mempharma.app.data.repo
 
 import android.content.Context
+import androidx.annotation.StringRes
 import com.mempharma.app.R
 import com.mempharma.app.data.local.dao.DoseEventDao
 import com.mempharma.app.data.local.dao.MedicationDao
@@ -9,6 +10,7 @@ import com.mempharma.app.data.local.entity.DoseEvent
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.refill.RefillAmountStore
 import com.mempharma.app.data.scheduler.AlarmScheduler
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.data.sms.SmsAlertManager
 import com.mempharma.app.domain.DoseEngine
 import com.mempharma.app.domain.SmsTrigger
@@ -36,6 +38,13 @@ class TrackingRepository @Inject constructor(
 
     /** Whole local history/audit log, newest first. */
     val history: Flow<List<DoseEvent>> = doseEventDao.observeAll()
+
+    /**
+     * Resource lookup for the audit notes, in the language chosen in Settings
+     * (read fresh, so a change applies to newly recorded notes too).
+     */
+    private fun text(@StringRes id: Int, vararg args: Any): String =
+        context.withAppLanguage().getString(id, *args)
 
     /** One-shot snapshot of the whole log (used for CSV export). */
     suspend fun snapshotEvents(): List<DoseEvent> = doseEventDao.observeAll().first()
@@ -102,7 +111,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.TAKEN.name,
-                note = context.getString(R.string.track_note_taken, med.doseQuantity, med.unitLabel)
+                note = text(R.string.track_note_taken, med.doseQuantity, med.unitLabel)
             )
         )
         // No stock left -> stop reminding until a refill is recorded.
@@ -126,7 +135,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.MUTED.name,
-                note = context.getString(R.string.track_note_muted)
+                note = text(R.string.track_note_muted)
             )
         )
         return true
@@ -141,7 +150,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.MISSED.name,
-                note = context.getString(R.string.track_note_missed)
+                note = text(R.string.track_note_missed)
             )
         )
     }
@@ -163,7 +172,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = null,
                 actionAtEpochMillis = at,
                 action = DoseAction.REFILLED.name,
-                note = context.getString(R.string.track_note_refill, addQuantity, med.unitLabel)
+                note = text(R.string.track_note_refill, addQuantity, med.unitLabel)
             )
         )
         scheduler.scheduleMedication(med.copy(quantity = newQuantity))

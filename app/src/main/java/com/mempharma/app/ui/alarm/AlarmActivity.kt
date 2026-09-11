@@ -49,6 +49,7 @@ import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.data.scheduler.AlarmActions
 import com.mempharma.app.data.scheduler.AlarmRingerService
 import com.mempharma.app.data.scheduler.Notifications
+import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.ui.components.StatusPill
 import com.mempharma.app.ui.theme.MemPharmaTheme
 import com.mempharma.app.util.TimeFormat
@@ -94,6 +95,11 @@ class AlarmActivity : ComponentActivity() {
                 lifecycleScope.launch { advanceToNextPendingOrFinish() }
             }
         }
+    }
+
+    /** Attach with the language chosen in Settings, like the main screen. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withAppLanguage())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

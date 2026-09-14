@@ -4,6 +4,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -52,6 +54,7 @@ class AlarmRingerService : Service() {
     private var ringtone: Ringtone? = null
     private var vibrator: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
     private var alarmJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -99,35 +102,52 @@ class AlarmRingerService : Service() {
 
     /**
      * Loop the chosen alert tone + vibration until the service is stopped.
-     * A [AlertTone.Silent] choice skips the tone but still vibrates.
+     *
+     * The tone is rendered on the **alarm** stream ([AudioAttributes.USAGE_ALARM]),
+     * exactly like the phone's own Clock alarm. That is what keeps a reminder audible
+     * when the phone is on "silent" (which only mutes the ringer and notification
+     * streams) and when Do Not Disturb is on (the system's "alarms" category is
+     * allowed by default).
      */
     private fun startRinging(tone: AlertTone) {
-        val ringtoneUri: Uri? = when (tone) {
-            AlertTone.Silent -> null
+        // Force USAGE_ALARM no matter which sound was picked: a tone chosen from the
+        // ringtone/notification lists would otherwise play on a stream that "silent"
+        // mode mutes, and the reminder would not be heard.
+        val attributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        val ringtoneUri: Uri = when (tone) {
             AlertTone.SystemDefault -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             is AlertTone.Custom -> Uri.parse(tone.uri)
         }
 
         // Prefer the chosen sound, then fall back to the default alarm tone and
         // finally the default notification tone so a reminder never rings silent
-        // by accident (unless the person explicitly asked for Silent).
-        ringtone = ringtoneUri?.let { uri ->
-            RingtoneManager.getRingtone(applicationContext, uri)
-                ?: RingtoneManager.getRingtone(
-                    applicationContext,
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                )
-                ?: RingtoneManager.getRingtone(
-                    applicationContext,
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                )
+        // by accident.
+        ringtone = (RingtoneManager.getRingtone(applicationContext, ringtoneUri)
+            ?: RingtoneManager.getRingtone(
+                applicationContext,
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            )
+            ?: RingtoneManager.getRingtone(
+                applicationContext,
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            ))?.apply {
+            // Must be assigned before play(): this decides which stream is used.
+            audioAttributes = attributes
+            isLooping = true
+            play()
         }
-        ringtone?.isLooping = true
-        ringtone?.play()
 
         if (ringtone != null) {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            audioManager?.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN)
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(attributes)
+                .build()
+            audioFocusRequest = request
+            audioManager?.requestAudioFocus(request)
         }
 
         val v = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
@@ -154,8 +174,10 @@ class AlarmRingerService : Service() {
         ringtone = null
         vibrator?.cancel()
         vibrator = null
-        (getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
-            ?.abandonAudioFocus(null)
+        (getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.let { audioManager ->
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        }
+        audioFocusRequest = null
         wakeLock?.let {
             if (it.isHeld) it.release()
         }

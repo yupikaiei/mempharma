@@ -14,6 +14,7 @@ import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.data.sms.SmsAlertManager
 import com.mempharma.app.domain.DoseEngine
 import com.mempharma.app.domain.SmsTrigger
+import com.mempharma.app.util.unitLabelFor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -45,6 +46,14 @@ class TrackingRepository @Inject constructor(
      */
     private fun text(@StringRes id: Int, vararg args: Any): String =
         context.withAppLanguage().getString(id, *args)
+
+    /**
+     * The noun to print next to [count] — "1 comprimido" but "5 comprimidos".
+     * Resolved in the language chosen in Settings, and only when the medicine
+     * still carries the default label; a custom unit is left exactly as typed.
+     */
+    private fun unitText(med: Medication, count: Int): String =
+        unitLabelFor(context.withAppLanguage(), med.unitLabel, count)
 
     /** One-shot snapshot of the whole log (used for CSV export). */
     suspend fun snapshotEvents(): List<DoseEvent> = doseEventDao.observeAll().first()
@@ -111,7 +120,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = occurrence,
                 actionAtEpochMillis = at,
                 action = DoseAction.TAKEN.name,
-                note = text(R.string.track_note_taken, med.doseQuantity, med.unitLabel)
+                note = text(R.string.track_note_taken, med.doseQuantity, unitText(med, med.doseQuantity))
             )
         )
         // No stock left -> stop reminding until a refill is recorded.
@@ -172,7 +181,7 @@ class TrackingRepository @Inject constructor(
                 scheduledForEpochMillis = null,
                 actionAtEpochMillis = at,
                 action = DoseAction.REFILLED.name,
-                note = text(R.string.track_note_refill, addQuantity, med.unitLabel)
+                note = text(R.string.track_note_refill, addQuantity, unitText(med, addQuantity))
             )
         )
         scheduler.scheduleMedication(med.copy(quantity = newQuantity))

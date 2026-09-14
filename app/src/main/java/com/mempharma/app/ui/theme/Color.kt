@@ -40,7 +40,16 @@ internal val LightColors = lightColorScheme(
     outlineVariant = Color(0xFFD8C2BB),
     inverseSurface = Color(0xFF362A24),
     inverseOnSurface = Color(0xFFFFECE4),
-    inversePrimary = Color(0xFFFFB596)
+    inversePrimary = Color(0xFFFFB596),
+    // Warm elevation ramp. Pinned explicitly so cards, dialogs and the bottom bar
+    // step up in a predictable, warm way instead of the default cool grey.
+    surfaceDim = Color(0xFFE8D6CF),
+    surfaceBright = Color(0xFFFFF8F5),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFFFF2EC),
+    surfaceContainer = Color(0xFFFCEBE4),
+    surfaceContainerHigh = Color(0xFFF6E4DD),
+    surfaceContainerHighest = Color(0xFFF0DED7)
 )
 
 internal val DarkColors = darkColorScheme(
@@ -70,5 +79,13 @@ internal val DarkColors = darkColorScheme(
     outlineVariant = Color(0xFF52433D),
     inverseSurface = Color(0xFFF0DFD9),
     inverseOnSurface = Color(0xFF362A24),
-    inversePrimary = Color(0xFF9A3412)
+    inversePrimary = Color(0xFF9A3412),
+    // Dark end of the same warm ramp — never a neutral grey.
+    surfaceDim = Color(0xFF1A120F),
+    surfaceBright = Color(0xFF413632),
+    surfaceContainerLowest = Color(0xFF140D0B),
+    surfaceContainerLow = Color(0xFF231916),
+    surfaceContainer = Color(0xFF271D1A),
+    surfaceContainerHigh = Color(0xFF322723),
+    surfaceContainerHighest = Color(0xFF3D312D)
 )

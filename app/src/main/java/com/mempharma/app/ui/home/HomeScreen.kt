@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,19 +35,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.R
+import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.scheduler.AlarmActions
 import com.mempharma.app.data.scheduler.AlarmRingerService
 import com.mempharma.app.data.scheduler.Notifications
+import com.mempharma.app.ui.components.EmptyState
 import com.mempharma.app.ui.components.MedicationAvatar
 import com.mempharma.app.ui.components.RefillDialog
 import com.mempharma.app.ui.components.StatusPill
+import com.mempharma.app.ui.theme.Dimens
 import com.mempharma.app.util.TimeFormat
 import com.mempharma.app.util.rememberAppLocale
+import com.mempharma.app.util.unitLabelFor
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -61,8 +71,8 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(horizontal = Dimens.ScreenPadding, vertical = Dimens.SpaceL),
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpaceL)
     ) {
         item { Header(state.now) }
 
@@ -71,7 +81,13 @@ fun HomeScreen(
         }
 
         if (state.cards.isEmpty()) {
-            item { EmptyHint() }
+            item {
+                EmptyState(
+                    icon = Icons.Filled.AddCircle,
+                    title = stringResource(R.string.home_empty_title),
+                    subtitle = stringResource(R.string.home_empty_subtitle)
+                )
+            }
         }
 
         items(state.cards, key = { it.med.id }) { card ->
@@ -135,7 +151,7 @@ private fun Header(now: Long) {
     val date = TimeFormat.formatDay(now, rememberAppLocale())
 
     Column {
-        Text(text = greeting, style = MaterialTheme.typography.headlineLarge)
+        Text(text = greeting, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         Text(
             text = date,
             style = MaterialTheme.typography.bodyLarge,
@@ -152,7 +168,7 @@ private fun OverdueBanner(count: Int) {
         colors = CardDefaults.cardColors(containerColor = scheme.errorContainer)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(Dimens.SpaceL),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -161,7 +177,7 @@ private fun OverdueBanner(count: Int) {
                 tint = scheme.onErrorContainer,
                 modifier = Modifier.size(32.dp)
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Dimens.SpaceM))
             Text(
                 text = pluralStringResource(R.plurals.home_doses_due, count, count),
                 style = MaterialTheme.typography.bodyLarge,
@@ -173,39 +189,20 @@ private fun OverdueBanner(count: Int) {
 }
 
 @Composable
-private fun EmptyHint() {
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(R.string.home_empty_title),
-            style = MaterialTheme.typography.titleLarge
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.home_empty_subtitle),
-            style = MaterialTheme.typography.bodyLarge,
-            color = scheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
 private fun AddMedicineButton(onAdd: () -> Unit) {
     Button(
         onClick = onAdd,
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp),
-        contentPadding = PaddingValues(16.dp)
+            .heightIn(min = Dimens.PrimaryActionMinHeight),
+        contentPadding = PaddingValues(Dimens.SpaceL)
     ) {
         Icon(Icons.Filled.Add, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(R.string.common_add_medicine), style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(Dimens.SpaceS))
+        Text(
+            stringResource(R.string.common_add_medicine),
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 }
 
@@ -222,15 +219,24 @@ private fun DoseCard(
     val pending = card.nextPending
     val locale = rememberAppLocale()
 
+    val resolvedToday = card.allResolvedToday && card.hasSlotsToday
     val containerColor = when {
         card.isDueNow -> scheme.errorContainer
-        card.allResolvedToday && card.hasSlotsToday -> scheme.tertiaryContainer
+        resolvedToday -> scheme.tertiaryContainer
         else -> scheme.surface
     }
     val contentColor = when {
         card.isDueNow -> scheme.onErrorContainer
-        card.allResolvedToday && card.hasSlotsToday -> scheme.onTertiaryContainer
+        resolvedToday -> scheme.onTertiaryContainer
         else -> scheme.onSurface
+    }
+    // A solid secondary role rather than a faded copy of the main colour: at 80%
+    // opacity the supporting line dropped below accessible contrast, which matters
+    // most for exactly the people this app is for.
+    val secondaryContent = when {
+        card.isDueNow -> scheme.onErrorContainer
+        resolvedToday -> scheme.onTertiaryContainer
+        else -> scheme.onSurfaceVariant
     }
 
     Card(
@@ -242,32 +248,37 @@ private fun DoseCard(
         } else null
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(Dimens.SpaceL),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MedicationAvatar(name = med.name, colorIndex = med.colorIndex, size = 56.dp)
+                MedicationAvatar(name = med.name, colorIndex = med.colorIndex)
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = med.name,
                         style = MaterialTheme.typography.titleLarge,
                         color = contentColor,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = stringResource(
                             R.string.common_dose_detail,
                             med.doseQuantity,
-                            med.unitLabel,
+                            unitLabelFor(med.unitLabel, med.doseQuantity),
                             startedOnLabel(med.startDateEpochDay)
                         ),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = contentColor.copy(alpha = 0.8f)
+                        color = secondaryContent
                     )
                 }
-                StockPill(med)
             }
+
+            // Stock sits on its own line: translated stock labels are long, and
+            // sharing a row with the name squeezed both until one was cropped.
+            StockPill(med)
 
             // The big, single "what do I do next" line.
             when {
@@ -287,45 +298,65 @@ private fun DoseCard(
                         style = MaterialTheme.typography.titleMedium,
                         color = contentColor
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceM),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Button(
                             onClick = { onTake(pending.occurrence) },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(60.dp),
+                                .heightIn(min = 60.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = scheme.tertiary,
                                 contentColor = scheme.onTertiary
                             )
                         ) {
-                            Text(stringResource(R.string.home_take), style = MaterialTheme.typography.titleMedium)
+                            Icon(Icons.Filled.Check, contentDescription = null)
+                            Spacer(Modifier.width(Dimens.SpaceS))
+                            Text(
+                                stringResource(R.string.home_take),
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                         OutlinedButton(
                             onClick = { onMute(pending.occurrence) },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(60.dp),
+                                .heightIn(min = 60.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = scheme.onSurfaceVariant
+                                contentColor = secondaryContent
                             )
                         ) {
-                            Text(stringResource(R.string.home_not_now), style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                stringResource(R.string.home_not_now),
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                     }
                 }
-                card.allResolvedToday && card.hasSlotsToday -> {
-                    Text(
-                        text = stringResource(R.string.home_all_done),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = contentColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                resolvedToday -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = contentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(Dimens.SpaceS))
+                        Text(
+                            text = stringResource(R.string.home_all_done),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = contentColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
                 else -> {
                     Text(
                         text = stringResource(R.string.home_no_reminder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = contentColor.copy(alpha = 0.8f)
+                        color = secondaryContent
                     )
                 }
             }
@@ -335,9 +366,12 @@ private fun DoseCard(
                 onClick = onRefill,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .heightIn(min = Dimens.ControlMinHeight)
             ) {
-                Text(stringResource(R.string.common_refill), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    stringResource(R.string.common_refill),
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
@@ -345,7 +379,7 @@ private fun DoseCard(
 
 /** Small pill showing remaining stock; turns amber/green/red appropriately. */
 @Composable
-private fun StockPill(med: com.mempharma.app.data.local.entity.Medication) {
+private fun StockPill(med: Medication) {
     val scheme = MaterialTheme.colorScheme
     val (label, container, content) = when {
         med.isOut -> Triple(
@@ -354,12 +388,12 @@ private fun StockPill(med: com.mempharma.app.data.local.entity.Medication) {
             scheme.onErrorContainer
         )
         med.isLow -> Triple(
-            stringResource(R.string.home_stock_low, med.quantity),
+            stringResource(R.string.home_stock_low, med.quantity, unitLabelFor(med.unitLabel, med.quantity)),
             scheme.tertiaryContainer,
             scheme.onTertiaryContainer
         )
         else -> Triple(
-            stringResource(R.string.home_stock_normal, med.quantity, med.unitLabel),
+            stringResource(R.string.home_stock_normal, med.quantity, unitLabelFor(med.unitLabel, med.quantity)),
             scheme.surfaceVariant,
             scheme.onSurfaceVariant
         )

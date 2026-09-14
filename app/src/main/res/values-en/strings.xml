@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- English. Used either when the phone is set to English or when English is
-     picked in Settings; otherwise the Portuguese default in res/values is used. -->
+     picked in Settings; otherwise the Portuguese default in res/values is used.
+
+     This file must stay key-for-key identical to res/values/strings.xml.
+     Copy rules (please keep them when editing):
+       • Never write "pill(s)". Use the `unit_pill` plurals below — the stored
+         default label in `unit_pill_default` is only a marker that
+         `util/Units.kt` swaps for the right singular/plural at render time.
+       • Quote with “ ” (never straight \" quotes).
+       • Errors are instructions ("Enter…"), never a repeat of the field label.
+       • Impersonal, calm voice — no first person. -->
 <resources>
     <string name="app_name">MemPharma</string>
 
@@ -8,7 +17,7 @@
     <string name="common_cancel">Cancel</string>
     <string name="common_delete">Delete</string>
     <string name="common_refill">Refill</string>
-    <string name="common_add_medicine">Add a medicine</string>
+    <string name="common_add_medicine">Add medicine</string>
     <string name="common_back">Back</string>
     <string name="common_change">Change</string>
     <string name="common_remove">Remove</string>
@@ -16,10 +25,21 @@
     <string name="common_preview">Preview</string>
     <string name="common_save_number">Save number</string>
     <string name="common_choose_contact">Choose contact</string>
-    <string name="common_type_number_instead">Type a number instead</string>
+    <string name="common_type_number_instead">Type the number</string>
     <string name="common_share_medicine_history">Share medicine history</string>
     <string name="common_dose_detail">%1$d %2$s • %3$s</string>
-    <string name="unit_pill_default">pill(s)</string>
+
+    <!-- The noun for one/several pills. Kept out of the sentences above and
+         swapped in by util/Units.kt so it always agrees with the number. -->
+    <plurals name="unit_pill">
+        <item quantity="one">pill</item>
+        <item quantity="other">pills</item>
+    </plurals>
+    <!-- Marker stored on a medicine that was never given a custom unit name.
+         Never shown directly to the person — see util/Units.kt. -->
+    <string name="unit_pill_default">pills</string>
+
+    <string name="refill_title">Refill %1$s</string>
     <string name="refill_stock_line">%1$d %2$s left in the bottle.</string>
     <string name="refill_how_many">How many are you adding?</string>
     <string name="refill_new_total">New total: %1$d %2$s</string>
@@ -37,18 +57,18 @@
     <string name="home_greeting_evening">Good evening</string>
     <string name="home_empty_title">No medicines yet</string>
     <string name="home_empty_subtitle">Add your first medicine and we will remind you when to take it.</string>
-    <string name="home_stock_out">0 left — refill</string>
-    <string name="home_stock_low">Only %1$d left</string>
+    <string name="home_stock_out">Empty — refill</string>
+    <string name="home_stock_low">Only %1$d %2$s left</string>
     <string name="home_stock_normal">%1$d %2$s</string>
     <string name="home_due_now">Due now — %1$s</string>
     <string name="home_next_dose">Next dose: %1$s</string>
-    <string name="home_take">✓ I took it</string>
+    <string name="home_take">I took it</string>
     <string name="home_not_now">Not now</string>
-    <string name="home_all_done">All done today ✓</string>
+    <string name="home_all_done">All done today</string>
     <string name="home_no_reminder">No reminder scheduled today.</string>
     <plurals name="home_doses_due">
-        <item quantity="one">1 dose is due now. Take it and tap \"I took it\".</item>
-        <item quantity="other">%1$d doses are due now. Take them and tap \"I took it\".</item>
+        <item quantity="one">1 dose is due now. Take it and tap “I took it”.</item>
+        <item quantity="other">%1$d doses are due now. Take them and tap “I took it”.</item>
     </plurals>
 
     <!-- Medicines list -->
@@ -57,14 +77,14 @@
         <item quantity="one">1 medicine</item>
         <item quantity="other">%1$d medicines</item>
     </plurals>
-    <string name="meds_empty">Nothing here yet.\nTap \"Add a medicine\" to begin.</string>
-    <string name="meds_stock_out">0 left</string>
-    <string name="meds_stock_low">Only %1$d</string>
-    <string name="meds_stock_normal">%1$d left</string>
+    <string name="meds_empty">Nothing here yet.\nTap “Add medicine” to begin.</string>
+    <string name="meds_stock_out">Empty</string>
+    <string name="meds_stock_low">Only %1$d %2$s left</string>
+    <string name="meds_stock_normal">%1$d %2$s left</string>
 
     <!-- Add / edit medicine -->
     <string name="edit_title_edit">Edit medicine</string>
-    <string name="edit_title_add">Add a medicine</string>
+    <string name="edit_title_add">Add medicine</string>
     <string name="edit_label_name">Medicine name</string>
     <string name="edit_placeholder_name">e.g. Blood pressure pill</string>
     <string name="edit_label_dose">How many pills each time?</string>
@@ -73,6 +93,8 @@
     <string name="edit_label_low_stock">Text my family member when this many are left</string>
     <string name="edit_low_stock_hint">A text is also sent if the medicine runs out completely. This only happens when text alerts are turned on in Settings.</string>
     <string name="edit_label_color">Choose a colour for this medicine</string>
+    <!-- Read out by screen readers for each colour swatch. -->
+    <string name="edit_color_option">Colour %1$d</string>
     <string name="edit_label_schedule">When should we remind you?</string>
     <string name="edit_schedule_hint">Tap the times you take this medicine.</string>
     <string name="edit_add_time">Add another time</string>
@@ -86,22 +108,22 @@
     <string name="edit_preset_night">Night</string>
     <string name="edit_error_name">Please type the medicine name.</string>
     <string name="edit_error_times">Choose at least one reminder time.</string>
-    <string name="edit_error_dose">How many pills each time?</string>
-    <string name="edit_error_stock">How many pills are in the bottle?</string>
+    <string name="edit_error_dose">Enter how many pills you take each time.</string>
+    <string name="edit_error_stock">Enter how many pills are in the bottle.</string>
 
     <!-- History -->
     <string name="history_title">History</string>
     <string name="history_subtitle">Every action is tracked on this device</string>
     <string name="history_export">Export history</string>
-    <string name="history_empty">Nothing recorded yet.\nTap \"I took it\" or \"Not now\" on a reminder and it will appear here.</string>
+    <string name="history_empty">Nothing recorded yet.\nTap “I took it” or “Not now” on a reminder and it will appear here.</string>
     <string name="history_filter_all">All</string>
     <string name="history_filter_taken">Taken</string>
     <string name="history_filter_muted">Muted</string>
-    <string name="history_filter_missed">Missed</string>
+    <string name="history_filter_missed">Not taken</string>
     <string name="history_filter_refills">Refills</string>
     <string name="history_action_taken">Taken</string>
     <string name="history_action_muted">Muted</string>
-    <string name="history_action_missed">Missed</string>
+    <string name="history_action_missed">Not taken</string>
     <string name="history_action_refill">Refill</string>
     <string name="history_due">• due %1$s</string>
     <string name="history_unknown_medicine">Unknown</string>
@@ -125,36 +147,37 @@
     <string name="settings_about_version">MemPharma • version %1$s</string>
     <string name="settings_about_privacy">Everything is stored only on this device. No account is needed and nothing is sent to the internet.</string>
     <string name="settings_reminders_title">Reminders &amp; alerts</string>
-    <string name="settings_notifications_on">Notifications: on ✓</string>
+    <string name="settings_notifications_on">Notifications on</string>
     <string name="settings_notifications_off">Notifications are turned off — alerts cannot be shown.</string>
     <string name="settings_allow_notifications">Allow notifications</string>
-    <string name="settings_precise_on">Precise reminders: on ✓</string>
+    <string name="settings_precise_on">Precise reminders on</string>
     <string name="settings_precise_off">Precise reminders are off. Reminders may be late — please allow them.</string>
     <string name="settings_allow_precise">Allow precise reminders</string>
+    <string name="settings_dnd_on">Alarm rings in Do Not Disturb</string>
+    <string name="settings_dnd_off">The alarm cannot interrupt Do Not Disturb. Please allow access.</string>
+    <string name="settings_allow_dnd">Allow Do Not Disturb access</string>
     <string name="settings_fullscreen_hint">To make reminders cover the whole screen, switch on “Full-screen notifications” for MemPharma in system settings.</string>
-    <string name="settings_open_notification_settings">Open notification settings</string>
+    <string name="settings_open_notification_settings">Open settings</string>
     <string name="settings_alert_sound_title">Alert sound</string>
     <string name="settings_alert_sound_subtitle">The sound that plays when it is time to take a medicine.</string>
     <string name="settings_alert_sound_current">Current: %1$s</string>
     <string name="settings_choose_sound">Choose sound</string>
     <string name="settings_sound_default">Default (system alarm)</string>
-    <string name="settings_sound_silent">Silent</string>
     <string name="settings_sound_custom">Custom sound</string>
-    <string name="settings_silent_hint">Silent: reminders still vibrate and show the full-screen alert.</string>
     <string name="settings_sms_title">Text a family member</string>
-    <string name="settings_sms_subtitle">We can text someone when a medicine is almost finished or has run out, so they can pick up a refill. We repeat every 3 days until you record a refill.</string>
+    <string name="settings_sms_subtitle">Sends someone a text when a medicine is almost finished or has run out, so they can pick up a refill. Repeats every 3 days until you record a refill.</string>
     <string name="settings_sms_patient_name">Patient name (optional)</string>
     <string name="settings_sms_patient_placeholder">e.g. John</string>
-    <string name="settings_sms_patient_support">Used in the text, e.g. \"John\'s Metformin\".</string>
+    <string name="settings_sms_patient_support">Used in the text, e.g. “John\'s Metformin”.</string>
     <string name="settings_sms_send_toggle">Send refill texts</string>
-    <string name="settings_sms_allowed">Sending texts: allowed ✓</string>
+    <string name="settings_sms_allowed">Sending texts allowed</string>
     <string name="settings_sms_permission_needed">MemPharma needs permission to send texts. Nothing is sent until you allow it.</string>
-    <string name="settings_sms_allow">Allow sending texts</string>
+    <string name="settings_sms_allow">Allow sending</string>
     <string name="settings_sms_sending_to">Sending to:</string>
     <string name="settings_sms_preview_caption">What a medicine that is almost finished will say:</string>
-    <string name="settings_sms_test_button">Send a test text</string>
+    <string name="settings_sms_test_button">Send test text</string>
     <string name="settings_sms_number_placeholder">e.g. 07700 900123</string>
-    <string name="settings_sms_result_sent">Test text sent ✓</string>
+    <string name="settings_sms_result_sent">Test text sent</string>
     <string name="settings_sms_result_no_contact">Choose a contact first.</string>
     <string name="settings_sms_result_no_permission">Allow sending texts first.</string>
     <string name="settings_sms_result_failed">The phone could not send the text. Check the signal and try again.</string>
@@ -169,16 +192,21 @@
     <string name="alarm_take_generic">It is time to take your medicine</string>
     <string name="alarm_scheduled_at">Scheduled at %1$s</string>
     <string name="alarm_muted_pill">Reminder muted — tap below when you have taken it</string>
-    <string name="alarm_take_button">✓  I took it</string>
-    <string name="alarm_mute_button">Not now (stop ringing)</string>
-    <string name="alarm_footer">This alert stays on until you confirm the medicine was taken.</string>
+    <string name="alarm_take_button">I took it</string>
+    <string name="alarm_mute_button">Not now</string>
+    <string name="alarm_footer">This alert stays on until you confirm the medicine was taken. “Not now” only stops the sound.</string>
 
     <!-- Notifications -->
     <string name="notif_channel_reminders_name">Medicine reminders</string>
     <string name="notif_channel_reminders_desc">Alerts when it is time to take your medicine</string>
-    <string name="notif_dose_title">%1$s — time to take it</string>
+    <!-- Notification titles are single-line, so the medicine name gets the title
+         and the "it is time" cue goes in the sub-text, where nothing truncates. -->
+    <string name="notif_dose_title">%1$s</string>
+    <string name="notif_dose_subtext">Time to take it</string>
     <string name="notif_dose_text">Take %1$d %2$s</string>
-    <string name="notif_dose_bigtext">Take %1$d %2$s. Tap \"I took it\" when done, or \"Not now\" to stop this reminder.</string>
+    <string name="notif_dose_bigtext">Take %1$d %2$s. Tap “I took it” when done, or “Not now” to stop this reminder.</string>
+    <!-- Kept with the tick: notification actions are drawn by the system font,
+         and Android does not allow custom icons on action buttons. -->
     <string name="notif_action_taken">✓  I took it</string>
     <string name="notif_action_mute">Not now</string>
     <string name="notif_sms_channel_name">Refill text problems</string>
@@ -189,13 +217,13 @@
     <!-- Audit-log notes (stored with each event) -->
     <string name="track_note_taken">Took %1$d %2$s</string>
     <string name="track_note_muted">Reminder muted — not taken</string>
-    <string name="track_note_missed">Dose was missed</string>
+    <string name="track_note_missed">Dose was not taken</string>
     <string name="track_note_refill">Added %1$d %2$s</string>
 
     <!-- Texts sent to the chosen family member -->
     <string name="sms_message_out">MemPharma: %1$s has run out. Please arrange a refill.</string>
     <string name="sms_message_low">MemPharma: %1$s is almost finished — only %2$d %3$s left. Please arrange a refill.</string>
-    <string name="sms_test_message">MemPharma test text: refill alerts for %1$s that are running low will arrive here.</string>
+    <string name="sms_test_message">MemPharma test text: refill alerts for %1$s will arrive here.</string>
     <string name="sms_test_noun">medicines</string>
     <string name="sms_possessive">%1$s\'s %2$s</string>
     <string name="sms_possessive_ending_s">%1$s\' %2$s</string>
@@ -210,6 +238,6 @@
     <string name="export_unknown_medicine">Unknown (id %1$d)</string>
     <string name="export_action_taken">Taken</string>
     <string name="export_action_muted">Muted (not taken)</string>
-    <string name="export_action_missed">Missed</string>
+    <string name="export_action_missed">Not taken</string>
     <string name="export_action_refill">Refill</string>
 </resources>

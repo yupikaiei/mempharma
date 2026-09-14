@@ -34,5 +34,16 @@ object AlarmActions {
     const val EXTRA_MED_ID = "extra_med_id"
     const val EXTRA_OCCURRENCE = "extra_occurrence" // epoch millis of the due dose
 
-    const val CHANNEL_ID = "dose_reminders"
+    /**
+     * Notification channel used by the dose alarms.
+     *
+     * NOTE: a channel's settings (importance, Do Not Disturb bypass) are immutable
+     * once it has been created, so this id was bumped when the alarm gained DND
+     * bypass. Installs that predate that keep [LEGACY_CHANNEL_ID] until
+     * [Notifications.ensureChannels] deletes it.
+     */
+    const val CHANNEL_ID = "dose_reminders_alarm"
+
+    /** The channel used before reminders could bypass Do Not Disturb. */
+    const val LEGACY_CHANNEL_ID = "dose_reminders"
 }

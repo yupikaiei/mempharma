@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,6 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -58,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.R
 import com.mempharma.app.ui.components.MedPalette
+import com.mempharma.app.ui.theme.Dimens
 import com.mempharma.app.util.TimeFormat
 import com.mempharma.app.util.rememberAppLocale
 import java.time.LocalTime
@@ -192,14 +197,14 @@ fun AddEditMedicationScreen(
         SectionLabel(stringResource(R.string.edit_label_color))
         MedPalette.listColors().chunked(4).forEach { rowColors ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                rowColors.forEachIndexed { idx, color ->
+                rowColors.forEach { color ->
                     val colorIndex = MedPalette.listColors().indexOf(color)
                     ColorDot(
                         color = color,
                         selected = state.colorIndex == colorIndex,
+                        label = stringResource(R.string.edit_color_option, colorIndex + 1),
                         onClick = { viewModel.updateColor(colorIndex) }
                     )
-                    if (idx < rowColors.lastIndex) Spacer(Modifier.width(0.dp))
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -261,8 +266,8 @@ fun AddEditMedicationScreen(
             enabled = !state.loading,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp),
-            contentPadding = PaddingValues(16.dp)
+                .heightIn(min = Dimens.PrimaryActionMinHeight),
+            contentPadding = PaddingValues(Dimens.SpaceL)
         ) {
             if (state.loading) {
                 CircularProgressIndicator(
@@ -310,11 +315,21 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun ColorDot(color: Color, selected: Boolean, onClick: () -> Unit) {
+private fun ColorDot(
+    color: Color,
+    selected: Boolean,
+    label: String,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .size(64.dp)
             .clickable(onClick = onClick)
+            // Without this a screen reader announced eight identical "button"s.
+            .semantics {
+                contentDescription = label
+                this.selected = selected
+            }
             .border(
                 width = if (selected) 4.dp else 1.dp,
                 color = if (selected) {
@@ -346,7 +361,7 @@ private fun TimeToggleButton(label: String, selected: Boolean, onClick: () -> Un
     val scheme = MaterialTheme.colorScheme
     Button(
         onClick = onClick,
-        modifier = modifier.height(56.dp),
+        modifier = modifier.heightIn(min = Dimens.ControlMinHeight),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (selected) scheme.secondaryContainer else scheme.surfaceVariant,
             contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant
@@ -368,10 +383,12 @@ private fun CustomTimeChip(minutes: Int, onClick: () -> Unit) {
         modifier = Modifier
             .background(scheme.surfaceVariant, MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
-            .padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp)
+            .padding(start = 12.dp, end = Dimens.SpaceXs, top = Dimens.SpaceXs, bottom = Dimens.SpaceXs)
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
-        IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+        // 48dp, not 32dp: this is the only way to remove a time and it used to be
+        // the smallest target in the app.
+        IconButton(onClick = onClick, modifier = Modifier.size(Dimens.MinTouchTarget)) {
             Icon(
                 Icons.Filled.Close,
                 contentDescription = stringResource(R.string.edit_remove_time, label),
@@ -386,7 +403,7 @@ private fun CustomTimeChip(minutes: Int, onClick: () -> Unit) {
 private fun OutlinedButton2(text: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = Dimens.ControlMinHeight),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary

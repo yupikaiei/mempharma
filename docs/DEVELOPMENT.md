@@ -39,7 +39,7 @@ UI (Compose) ──► ViewModel (StateFlow) ──► Repository ──► Room
   (`mempharma_active_alerts`), deliberately outside Room so adding it needs no schema migration.
 - **`data/settings/SettingsRepository`** — DataStore-backed app settings: the global font-scale
   and the chosen alert sound (`AlertTone`). Read by `AlarmRingerService` so reminders ring with
-  the tone the person picked.
+  the tone the person picked, always rendered on the alarm stream (there is no silent option).
 - **`data/settings/LanguageStore`** — the display language picked in Settings. Kept in a small
   `SharedPreferences` file (deliberately not DataStore) because it must be readable
   *synchronously* while a context attaches — see *Languages / localization* below.
@@ -140,6 +140,29 @@ stock drops (dose recorded)              daily SmsAlertWorker
   - API 33+: `USE_EXACT_ALARM` is auto-granted for alarm/medicine apps.
   - When exact alarms are unavailable we degrade to inexact `setAndAllowWhileIdle` + the
     in-app overdue banner, so reminders are never silently lost.
+- **Alarm-style scheduling**: when exact alarms are allowed, slots are registered with
+  `AlarmManager.setAlarmClock()` — the same API the phone's own Clock uses. It shows the system
+  alarm icon, runs the reminder as a user-visible alarm (Doze-exempt) and allows the ringer
+  foreground service to be started from the background, so the "foreground service blocked"
+  fallback is rarely needed.
+
+### Ringing through Silent / Do Not Disturb (like the phone's own alarm)
+
+- The looping tone is rendered with `AudioAttributes.USAGE_ALARM` in `AlarmRingerService`, i.e.
+  on the **alarm** stream. Silent mode only mutes the ringer and notification streams, and the
+  system's Do Not Disturb "alarms" category is allowed by default, so a reminder is still heard.
+  The audio-focus request uses the same alarm attributes.
+- The alert notification uses the `dose_reminders_alarm` channel with `setBypassDnd(true)`, so
+  the notification **and** the full-screen alert can interrupt DND too. The system only honours
+  that while the app holds **Do Not Disturb access** (`ACCESS_NOTIFICATION_POLICY`), which the
+  person grants from the Settings reminders card.
+- Channel settings are immutable once created, so the DND-bypassing channel has a new id and
+  `Notifications.ensureChannels` deletes the old `dose_reminders` channel.
+- DND *Total silence* still blocks even alarms on most devices — a system-level policy no
+  third-party app can override. The alarm-stream volume is respected as-is, exactly like the
+  stock Clock.
+- The alert sound has **no silent choice**: a stored legacy `"silent"` value is read back as the
+  system default alarm tone (`AlertTone.parseAlertTone`).
 
 ### Notification → action flow
 
@@ -147,9 +170,10 @@ stock drops (dose recorded)              daily SmsAlertWorker
 Reminder fires (exact alarm)
    └─ ReminderReceiver
         ├─ records the live alert in ActiveAlertRepository (DataStore)
-        ├─ starts AlarmRingerService (foreground): loops the chosen alert tone
-        │     (default: system alarm; Silent = vibrate only) + vibrates until
-        │     the person answers — it does not stop on its own
+        ├─ starts AlarmRingerService (foreground): loops the chosen alert tone on
+        │     the ALARM stream, so it rings even in Silent / Do Not Disturb (like
+        │     the phone's own Clock), + vibrates until the person answers — it
+        │     does not stop on its own
         ├─ posts an ONGOING full-screen notification (cannot be swiped away)
         ├─ launches AlarmActivity full-screen (fills device, shows over lock
         │     screen, turnScreenOn + showWhenLocked)
@@ -215,8 +239,10 @@ version + write a real `Migration` in `AppModule` before any schema change ships
 - **Settings → Text size** multiplies the whole UI via a global `fontScale` (CompositionLocal
   density override) — no per-widget work needed.
 - **Settings → Alert sound** lets the person choose the reminder tone from the device's own
-  alarms, ringtones and notifications (plus **Default** and **Silent**), preview it, and have it
-  persisted for the looping ringer service. Silent still vibrates and shows the full-screen alert.- **Settings → Language** pins the app's language (*Igual ao telemóvel*, *Português*, *English*)
+  alarms, ringtones and notifications (plus **Default**), preview it, and have it persisted for
+  the looping ringer service. There is no silent choice: a reminder always rings, and it is
+  played on the alarm stream so it is heard even when the phone is silent or in Do Not Disturb.
+- **Settings → Language** pins the app's language (*Igual ao telemóvel*, *Português*, *English*)
   without leaving the app; it applies to every screen, notification and text.- 48dp+ touch targets, big labelled bottom navigation, high-contrast colour roles.
 - One primary action per medicine card: **"✓ I took it"**; **"Not now"** is the quiet alternative.
 - TalkBack: all icons have content descriptions / text labels; status pills carry text.
@@ -236,6 +262,7 @@ Declared in `AndroidManifest.xml`:
 | `USE_FULL_SCREEN_INTENT` | full-screen alarm covers the whole display | Android 14+ needs the "Full-screen notifications" toggle (Settings guides the user) |
 | `FOREGROUND_SERVICE` | keep the alarm ringing until answered | required to start a foreground service |
 | `FOREGROUND_SERVICE_SPECIAL_USE` | declare the ringer service type (`specialUse`) | Android 14+ |
+| `ACCESS_NOTIFICATION_POLICY` | let the alarm interrupt Do Not Disturb | special access, granted by the person as "Do Not Disturb access" (Settings links there). Without it the reminder still rings, but the alert may stay hidden while DND is on |
 | `SEND_SMS` | optionally text the chosen family member when a medicine is running out | runtime-granted; only used after the person turns the feature on |
 | `ACCESS_NETWORK_STATE` | added by `androidx.work`'s own manifest (not by app code) | normal permission; the app itself still never talks to the network |
 

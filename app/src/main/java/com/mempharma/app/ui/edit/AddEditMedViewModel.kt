@@ -11,6 +11,7 @@ import com.mempharma.app.data.repo.MedicationRepository
 import com.mempharma.app.data.repo.TrackingRepository
 import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.domain.DoseEngine
+import com.mempharma.app.util.Units
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.LocalDate
@@ -86,7 +87,10 @@ class AddEditMedViewModel @Inject constructor(
                 it.copy(
                     name = med.name,
                     doseQuantity = med.doseQuantity.toString(),
-                    unitLabel = med.unitLabel,
+                    // A medicine that still carries the default marker (including
+                    // the legacy "comprimido(s)" written by older versions) should
+                    // show the plain word here, not the marker itself.
+                    unitLabel = if (Units.isDefaultLabel(med.unitLabel)) defaultUnitLabel() else med.unitLabel,
                     quantity = med.quantity.toString(),
                     lowStockThreshold = med.lowStockThreshold.toString(),
                     colorIndex = med.colorIndex,

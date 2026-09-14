@@ -22,8 +22,11 @@ data class Medication(
     val colorIndex: Int = 0,
     val doseQuantity: Int = 1,
     // Default matches the app's default language (Portuguese); the Add/Edit
-    // screen resolves the localized default from resources.
-    val unitLabel: String = "comprimido(s)",
+    // screen resolves the localized default from resources. This value is a
+    // *marker*, not display text: `util/Units.kt` recognises it (in any
+    // language) and renders the correct singular/plural for the number it sits
+    // next to, so the app never says "1 comprimido(s)".
+    val unitLabel: String = "comprimidos",
     val quantity: Int = 0,
     val startDateEpochDay: Long = 0L,
     val timesCsv: String = "08:00",

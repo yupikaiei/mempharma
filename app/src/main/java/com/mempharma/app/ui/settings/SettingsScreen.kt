@@ -3,6 +3,7 @@ package com.mempharma.app.ui.settings
 import android.Manifest
 import android.app.Activity
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -23,7 +24,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -60,6 +63,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,7 +76,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.BuildConfig
 import com.mempharma.app.R
-import com.mempharma.app.data.settings.ALERT_SILENT
 import com.mempharma.app.data.settings.AlertTone
 import com.mempharma.app.data.settings.SettingsRepository
 import com.mempharma.app.data.settings.parseAlertTone
@@ -79,7 +83,10 @@ import com.mempharma.app.data.sms.SmsTestResult
 import com.mempharma.app.data.sms.SmsTexts
 import com.mempharma.app.domain.SmsStage
 import com.mempharma.app.domain.SmsTrigger
+import com.mempharma.app.ui.components.CardHeader
+import com.mempharma.app.ui.theme.Dimens
 import com.mempharma.app.util.AppLocale
+import com.mempharma.app.util.pillNoun
 import kotlinx.coroutines.delay
 
 private data class FontOption(@StringRes val labelRes: Int, val scale: Float)
@@ -119,7 +126,11 @@ fun SettingsScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineLarge)
+        Text(
+            stringResource(R.string.settings_title),
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.semantics { heading() }
+        )
 
         // --- Text size ---
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -141,8 +152,8 @@ fun SettingsScreen() {
                         onClick = { viewModel.setFontScale(option.scale) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .height(56.dp),
+                            .padding(vertical = Dimens.SpaceXs)
+                            .heightIn(min = Dimens.ControlMinHeight),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (selected) scheme.secondaryContainer else scheme.surfaceVariant,
                             contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant
@@ -196,17 +207,9 @@ fun SettingsScreen() {
 
         // --- About ---
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Info, contentDescription = null, tint = scheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        stringResource(R.string.settings_about_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
+            Column(modifier = Modifier.padding(Dimens.SpaceL)) {
+                CardHeader(Icons.Filled.Info, stringResource(R.string.settings_about_title))
+                Spacer(Modifier.height(Dimens.SpaceS))
                 Text(
                     stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.bodyMedium
@@ -252,8 +255,8 @@ private fun LanguageCard(
                     onClick = { onSelect(option.tag) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .height(56.dp),
+                        .padding(vertical = Dimens.SpaceXs)
+                        .heightIn(min = Dimens.ControlMinHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isSelected) scheme.secondaryContainer else scheme.surfaceVariant,
                         contentColor = if (isSelected) scheme.onSecondaryContainer else scheme.onSurfaceVariant
@@ -295,6 +298,10 @@ private fun ReminderSettingsCard(context: Context) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     val exactAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    // The alarm must be able to interrupt Do Not Disturb, like the phone's own Clock.
+    val dndAccessGranted = notificationManager.isNotificationPolicyAccessGranted()
+
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { /* returning here; app re-schedules reminders on next open */ }
@@ -315,17 +322,9 @@ private fun ReminderSettingsCard(context: Context) {
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Notifications, contentDescription = null, tint = scheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(R.string.settings_reminders_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(12.dp))
+        Column(modifier = Modifier.padding(Dimens.SpaceL)) {
+            CardHeader(Icons.Filled.Notifications, stringResource(R.string.settings_reminders_title))
+            Spacer(Modifier.height(Dimens.SpaceM))
 
             Text(
                 text = if (notificationsGranted) {
@@ -344,11 +343,14 @@ private fun ReminderSettingsCard(context: Context) {
                         )
                         context.startActivity(intent)
                     },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) { Text(stringResource(R.string.settings_allow_notifications)) }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Dimens.SpaceS))
             Text(
                 text = if (exactAllowed) {
                     stringResource(R.string.settings_precise_on)
@@ -360,12 +362,38 @@ private fun ReminderSettingsCard(context: Context) {
             if (!exactAllowed) {
                 Button(
                     onClick = { openSystemSettings() },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) { Text(stringResource(R.string.settings_allow_precise)) }
             }
 
+            Spacer(Modifier.height(Dimens.SpaceS))
+            Text(
+                text = if (dndAccessGranted) {
+                    stringResource(R.string.settings_dnd_on)
+                } else {
+                    stringResource(R.string.settings_dnd_off)
+                },
+                style = MaterialTheme.typography.bodyLarge
+            )
+            if (!dndAccessGranted) {
+                Button(
+                    onClick = {
+                        settingsLauncher.launch(
+                            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
+                ) { Text(stringResource(R.string.settings_allow_dnd)) }
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Dimens.SpaceM))
                 Text(
                     stringResource(R.string.settings_fullscreen_hint),
                     style = MaterialTheme.typography.bodyLarge
@@ -378,7 +406,10 @@ private fun ReminderSettingsCard(context: Context) {
                         )
                         context.startActivity(intent)
                     },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) { Text(stringResource(R.string.settings_open_notification_settings)) }
             }
         }
@@ -433,8 +464,8 @@ private fun AlertSoundCard(
             )
         }
         stopPreview()
-        // The picker reports "Silent" as a null URI.
-        onSelected(picked?.toString() ?: ALERT_SILENT)
+        // A silent choice is no longer offered, so a null URI means "system default".
+        onSelected(picked?.toString() ?: "")
     }
 
     fun openPicker() {
@@ -446,7 +477,8 @@ private fun AlertSoundCard(
                     RingtoneManager.TYPE_NOTIFICATION
             )
             putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+            // No silent choice: a reminder must always ring (see [AlertTone]).
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
             putExtra(
                 RingtoneManager.EXTRA_RINGTONE_TITLE,
                 context.getString(R.string.settings_alert_sound_title)
@@ -461,23 +493,15 @@ private fun AlertSoundCard(
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Notifications, contentDescription = null, tint = scheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(R.string.settings_alert_sound_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(Dimens.SpaceL)) {
+            CardHeader(Icons.Filled.Notifications, stringResource(R.string.settings_alert_sound_title))
+            Spacer(Modifier.height(Dimens.SpaceS))
             Text(
                 stringResource(R.string.settings_alert_sound_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.SpaceM))
             Text(
                 stringResource(R.string.settings_alert_sound_current, displayName),
                 style = MaterialTheme.typography.bodyLarge
@@ -487,8 +511,8 @@ private fun AlertSoundCard(
                 onClick = { openPicker() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .height(56.dp)
+                    .padding(top = Dimens.SpaceS)
+                    .heightIn(min = Dimens.ControlMinHeight)
             ) { Text(stringResource(R.string.settings_choose_sound)) }
 
             OutlinedButton(
@@ -499,11 +523,10 @@ private fun AlertSoundCard(
                         preview.value = playPreview(context, tone)
                     }
                 },
-                enabled = tone != AlertTone.Silent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .height(56.dp)
+                    .padding(top = Dimens.SpaceS)
+                    .heightIn(min = Dimens.ControlMinHeight)
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -513,15 +536,6 @@ private fun AlertSoundCard(
                     )
                 )
             }
-
-            if (tone == AlertTone.Silent) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.settings_silent_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
@@ -529,22 +543,20 @@ private fun AlertSoundCard(
 /** Human-readable name for the current choice. */
 private fun toneDisplayName(context: Context, tone: AlertTone): String = when (tone) {
     AlertTone.SystemDefault -> context.getString(R.string.settings_sound_default)
-    AlertTone.Silent -> context.getString(R.string.settings_sound_silent)
     is AlertTone.Custom -> runCatching {
         RingtoneManager.getRingtone(context, Uri.parse(tone.uri))?.getTitle(context)
     }.getOrNull()?.takeIf { it.isNotBlank() } ?: context.getString(R.string.settings_sound_custom)
 }
 
-/** Map the choice to a device URI, or null for [AlertTone.Silent]. */
-private fun AlertTone.toPlayableUri(): Uri? = when (this) {
-    AlertTone.Silent -> null
+/** Map the choice to a device URI. */
+private fun AlertTone.toPlayableUri(): Uri = when (this) {
     AlertTone.SystemDefault -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
     is AlertTone.Custom -> Uri.parse(uri)
 }
 
 /** Play a one-shot sample of the chosen tone; returns the playing ringtone. */
 private fun playPreview(context: Context, tone: AlertTone): Ringtone? {
-    val uri = tone.toPlayableUri() ?: return null
+    val uri = tone.toPlayableUri()
     return runCatching {
         RingtoneManager.getRingtone(context, uri)?.apply {
             isLooping = false
@@ -610,23 +622,15 @@ private fun SmsAlertCard(
     val focusManager = LocalFocusManager.current
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Person, contentDescription = null, tint = scheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(R.string.settings_sms_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(Dimens.SpaceL)) {
+            CardHeader(Icons.Filled.Person, stringResource(R.string.settings_sms_title))
+            Spacer(Modifier.height(Dimens.SpaceS))
             Text(
                 stringResource(R.string.settings_sms_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.SpaceM))
 
             OutlinedTextField(
                 value = typedName,
@@ -666,9 +670,21 @@ private fun SmsAlertCard(
                 Switch(checked = enabled, onCheckedChange = onEnabledChange)
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Dimens.SpaceS))
             if (permissionGranted) {
-                Text(stringResource(R.string.settings_sms_allowed), style = MaterialTheme.typography.bodyLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = scheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(Dimens.SpaceS))
+                    Text(
+                        stringResource(R.string.settings_sms_allowed),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             } else {
                 Text(
                     stringResource(R.string.settings_sms_permission_needed),
@@ -678,12 +694,12 @@ private fun SmsAlertCard(
                     onClick = { permissionLauncher.launch(Manifest.permission.SEND_SMS) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .height(56.dp)
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) { Text(stringResource(R.string.settings_sms_allow)) }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.SpaceM))
             if (contactNumber.isNotBlank()) {
                 Text(
                     stringResource(R.string.settings_sms_sending_to),
@@ -705,13 +721,13 @@ private fun SmsAlertCard(
                         onClick = { chooseContact() },
                         modifier = Modifier
                             .weight(1f)
-                            .height(56.dp)
+                            .heightIn(min = Dimens.MinTouchTarget)
                     ) { Text(stringResource(R.string.common_change)) }
                     OutlinedButton(
                         onClick = onClearContact,
                         modifier = Modifier
                             .weight(1f)
-                            .height(56.dp)
+                            .heightIn(min = Dimens.MinTouchTarget)
                     ) { Text(stringResource(R.string.common_remove)) }
                 }
             } else {
@@ -719,7 +735,7 @@ private fun SmsAlertCard(
                     onClick = { chooseContact() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) { Text(stringResource(R.string.common_choose_contact)) }
                 TextButton(
                     onClick = { typingNumber = !typingNumber },
@@ -758,8 +774,8 @@ private fun SmsAlertCard(
                     enabled = typedNumber.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .height(56.dp)
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) { Text(stringResource(R.string.common_save_number)) }
             }
 
@@ -774,7 +790,7 @@ private fun SmsAlertCard(
                     SmsTrigger.buildMessage(
                         medicineName = stringResource(R.string.settings_sms_sample_medicine),
                         quantity = 3,
-                        unitLabel = stringResource(R.string.unit_pill_default),
+                        unitLabel = pillNoun(3),
                         stage = SmsStage.LOW,
                         patientName = typedName,
                         templates = SmsTexts.templates(context)
@@ -786,8 +802,8 @@ private fun SmsAlertCard(
                     enabled = permissionGranted,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .height(56.dp)
+                        .padding(top = Dimens.SpaceS)
+                        .heightIn(min = Dimens.ControlMinHeight)
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                     Spacer(Modifier.width(8.dp))

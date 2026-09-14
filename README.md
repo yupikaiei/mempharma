@@ -14,7 +14,7 @@ Every dose reminder arrives as a clear, high-priority notification with two big 
 | | |
 |---|---|
 | 💊 **Multiple medicines** | each with its own colour, dose size, stock and schedule |
-| 🔔 **Alarm-style reminders** | exact-time, **full-screen** alert that **keeps ringing/vibrating until answered** — even when the app is closed |
+| 🔔 **Alarm-style reminders** | exact-time, **full-screen** alert that **keeps ringing/vibrating until answered** — even when the app is closed, and even while the phone is on **silent** or **“do not disturb”** (just like the phone's own alarm) |
 | ✅ **"I took it"** | stops the alarm, decrements the remaining stock, logs the event |
 | 🔕 **"Not now" (mute)** | stops *that* alarm without taking the dose, logs it as muted — no nagging |
 | 📊 **Stock tracking** | see pills remaining; amber "only N left" and red "refill needed" states |

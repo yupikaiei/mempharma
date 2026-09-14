@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,11 +18,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,14 +39,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mempharma.app.R
+import com.mempharma.app.ui.components.EmptyState
 import com.mempharma.app.ui.components.MedicationAvatar
 import com.mempharma.app.ui.components.StatusPill
+import com.mempharma.app.ui.theme.Dimens
 import com.mempharma.app.util.TimeFormat
 import com.mempharma.app.util.rememberAppLocale
 import java.io.File
@@ -82,7 +88,11 @@ fun HistoryScreen() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.history_title), style = MaterialTheme.typography.headlineLarge)
+                Text(
+                    stringResource(R.string.history_title),
+                    style = MaterialTheme.typography.headlineLarge,
+                    modifier = Modifier.semantics { heading() }
+                )
                 Text(
                     text = stringResource(R.string.history_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
@@ -105,45 +115,34 @@ fun HistoryScreen() {
             }
         }
 
-        // Filters
+        // Filters. Chips rather than filled buttons: they are the standard Material
+        // control for filtering, and they are compact enough that the longer
+        // Portuguese labels ("Reabastecimentos") still reach the edge of the
+        // scrollable row instead of hiding off-screen.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.SpaceS),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceS)
         ) {
             HistoryFilter.entries.forEach { f ->
-                val selected = filter == f
-                Button(
+                FilterChip(
+                    selected = filter == f,
                     onClick = { filter = f },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                        contentColor = if (selected) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(stringResource(f.labelRes), style = MaterialTheme.typography.titleSmall)
-                }
+                    label = { Text(stringResource(f.labelRes)) },
+                    modifier = Modifier.heightIn(min = Dimens.MinTouchTarget)
+                )
             }
         }
 
         val filtered = rows.filter(filter.predicate)
 
         if (filtered.isEmpty()) {
-            Text(
-                text = stringResource(R.string.history_empty),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(24.dp)
+            EmptyState(
+                icon = Icons.AutoMirrored.Filled.List,
+                title = stringResource(R.string.history_title),
+                subtitle = stringResource(R.string.history_empty)
             )
         } else {
             LazyColumn(
@@ -182,17 +181,37 @@ private fun HistoryRowCard(row: HistoryRow) {
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            val (pillLabel, pillContainer, pillContent) = actionPill(row.action)
-            MedicationAvatar(name = displayName, colorIndex = row.colorIndex, size = 44.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+            MedicationAvatar(
+                name = displayName,
+                colorIndex = row.colorIndex,
+                size = Dimens.AvatarSmall
+            )
+            Spacer(Modifier.width(Dimens.SpaceM))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)
+            ) {
+                val (pillLabel, pillContainer, pillContent) = actionPill(row.action)
+                // The action pill shares the first line with the name, but the name
+                // keeps a guaranteed share of the width. The longest translated
+                // action ("Reabastecimento") used to squeeze it down to a sliver.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(Dimens.SpaceS))
+                    StatusPill(text = pillLabel, container = pillContainer, content = pillContent)
+                }
                 val detail = buildString {
                     append(TimeFormat.formatTime(row.atEpoch, locale))
                     row.scheduledEpoch?.let {
@@ -218,8 +237,6 @@ private fun HistoryRowCard(row: HistoryRow) {
                     )
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            StatusPill(text = pillLabel, container = pillContainer, content = pillContent)
         }
     }
 }

@@ -3,9 +3,9 @@ package com.mempharma.app.ui.navigation
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -51,8 +52,10 @@ private data class BottomDestination(
 
 private val bottomDestinations = listOf(
     BottomDestination(MemRoutes.HOME, R.string.nav_today, Icons.Filled.Home),
-    BottomDestination(MemRoutes.MEDS, R.string.nav_medicines, Icons.Filled.DateRange),
-    BottomDestination(MemRoutes.HISTORY, R.string.nav_history, Icons.Filled.List),
+    // A calendar glyph for "Medicines" was simply the wrong idea — this is the tab
+    // people look for when they want their pills.
+    BottomDestination(MemRoutes.MEDS, R.string.nav_medicines, Icons.AutoMirrored.Filled.List),
+    BottomDestination(MemRoutes.HISTORY, R.string.nav_history, Icons.Filled.DateRange),
     BottomDestination(MemRoutes.SETTINGS, R.string.nav_settings, Icons.Filled.Settings)
 )
 
@@ -81,7 +84,17 @@ fun MemPharmaApp(modifier: Modifier = Modifier) {
                                 }
                             },
                             icon = { Icon(dest.icon, contentDescription = null) },
-                            label = { Text(stringResource(dest.labelRes)) }
+                            // "Medicamentos" is long and the bar splits the width four
+                            // ways, so at large text sizes the label used to be cut
+                            // mid-word. One line with an ellipsis keeps the bar even.
+                            label = {
+                                Text(
+                                    text = stringResource(dest.labelRes),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         )
                     }
                 }

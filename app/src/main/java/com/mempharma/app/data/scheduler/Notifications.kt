@@ -13,6 +13,7 @@ import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.ui.alarm.AlarmActivity
+import com.mempharma.app.util.unitLabelFor
 
 /**
  * Builds the dose reminder notifications, including the two action buttons that
@@ -48,9 +49,17 @@ object Notifications {
                 description = context.getString(R.string.notif_channel_reminders_desc)
                 enableVibration(false) // the ringer service handles sound + vibration
                 setSound(null, null)
+                // Let the alarm interrupt Do Not Disturb, exactly like the phone's own
+                // Clock. The system only honours this while the person has granted
+                // "Do Not Disturb access" (the Settings reminders card links there).
+                setBypassDnd(true)
             }
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
+            // Channel settings are immutable once created, so the previous channel is
+            // replaced above; remove the old one so a stale, non-bypassing duplicate
+            // does not linger in the system notification settings.
+            manager.deleteNotificationChannel(AlarmActions.LEGACY_CHANNEL_ID)
         }
     }
 
@@ -102,12 +111,20 @@ object Notifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // The dose noun is resolved here ("1 comprimido" / "5 comprimidos") instead
+        // of printing the stored label, which used to read as "1 comprimido(s)".
+        val doseNoun = unitLabelFor(context, med.unitLabel, med.doseQuantity)
+
         return NotificationCompat.Builder(context, AlarmActions.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(context.getColor(R.color.ic_launcher_background))
+            // The title is a single line and gets truncated by the system, so the
+            // medicine name goes here (the most useful part) and "it is time" moves
+            // to the sub-text, where it always fits.
             .setContentTitle(context.getString(R.string.notif_dose_title, med.name))
+            .setSubText(context.getString(R.string.notif_dose_subtext))
             .setContentText(
-                context.getString(R.string.notif_dose_text, med.doseQuantity, med.unitLabel)
+                context.getString(R.string.notif_dose_text, med.doseQuantity, doseNoun)
             )
             .setStyle(
                 NotificationCompat.BigTextStyle()
@@ -115,7 +132,7 @@ object Notifications {
                         context.getString(
                             R.string.notif_dose_bigtext,
                             med.doseQuantity,
-                            med.unitLabel
+                            doseNoun
                         )
                     )
             )

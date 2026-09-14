@@ -12,16 +12,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,9 +58,11 @@ import com.mempharma.app.data.scheduler.AlarmRingerService
 import com.mempharma.app.data.scheduler.Notifications
 import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.ui.components.StatusPill
+import com.mempharma.app.ui.theme.Dimens
 import com.mempharma.app.ui.theme.MemPharmaTheme
 import com.mempharma.app.util.TimeFormat
 import com.mempharma.app.util.rememberAppLocale
+import com.mempharma.app.util.unitLabelFor
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
@@ -258,109 +267,136 @@ private fun AlarmContent(
     val scheme = MaterialTheme.colorScheme
     val locale = rememberAppLocale()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.weight(0.5f))
+    // This screen must never become unusable. Fixed heights plus a non-scrolling
+    // column meant that at the largest text size on a small screen the app clipped
+    // its own alarm — including the button that ends it. The content now scrolls,
+    // and is given a minimum height of one viewport so the familiar "message up
+    // top, answers at the bottom" layout is kept whenever everything fits.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val viewportHeight = maxHeight
 
-        Icon(
-            Icons.Filled.Notifications,
-            contentDescription = null,
-            tint = if (muted) scheme.onSurfaceVariant else scheme.error,
-            modifier = Modifier.size(110.dp)
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            text = when {
-                muted && med != null -> stringResource(R.string.alarm_title_muted_named, med.name)
-                muted -> stringResource(R.string.alarm_title_muted)
-                med != null -> stringResource(R.string.alarm_title_named, med.name)
-                else -> stringResource(R.string.alarm_title)
-            },
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = scheme.onBackground
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = if (med != null) {
-                stringResource(R.string.alarm_take, med.doseQuantity, med.unitLabel)
-            } else {
-                stringResource(R.string.alarm_take_generic)
-            },
-            style = MaterialTheme.typography.titleLarge,
-            color = scheme.onBackground,
-            textAlign = TextAlign.Center
-        )
-
-        if (occurrence > 0) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(
-                    R.string.alarm_scheduled_at,
-                    TimeFormat.formatTime(occurrence, locale)
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                color = scheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-
-        if (muted) {
-            Spacer(Modifier.height(20.dp))
-            StatusPill(
-                text = stringResource(R.string.alarm_muted_pill),
-                container = scheme.secondaryContainer,
-                content = scheme.onSecondaryContainer
-            )
-        }
-
-        Spacer(Modifier.weight(0.8f))
-
-        // The confirmation that ends the alarm.
-        Button(
-            onClick = onTaken,
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(92.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = scheme.tertiary,
-                contentColor = scheme.onTertiary
-            )
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = viewportHeight)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = Dimens.SpaceL),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(stringResource(R.string.alarm_take_button), style = MaterialTheme.typography.headlineSmall)
-        }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    tint = if (muted) scheme.onSurfaceVariant else scheme.error,
+                    modifier = Modifier.size(110.dp)
+                )
 
-        if (!muted) {
-            Spacer(Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = onMute,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.onBackground)
+                Spacer(Modifier.height(Dimens.SpaceL))
+
+                Text(
+                    text = when {
+                        muted && med != null -> stringResource(R.string.alarm_title_muted_named, med.name)
+                        muted -> stringResource(R.string.alarm_title_muted)
+                        med != null -> stringResource(R.string.alarm_title_named, med.name)
+                        else -> stringResource(R.string.alarm_title)
+                    },
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = scheme.onBackground
+                )
+
+                Spacer(Modifier.height(Dimens.SpaceM))
+
+                Text(
+                    text = if (med != null) {
+                        stringResource(
+                            R.string.alarm_take,
+                            med.doseQuantity,
+                            unitLabelFor(med.unitLabel, med.doseQuantity)
+                        )
+                    } else {
+                        stringResource(R.string.alarm_take_generic)
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    color = scheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
+
+                if (occurrence > 0) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.alarm_scheduled_at,
+                            TimeFormat.formatTime(occurrence, locale)
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = scheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                if (muted) {
+                    Spacer(Modifier.height(20.dp))
+                    StatusPill(
+                        text = stringResource(R.string.alarm_muted_pill),
+                        container = scheme.secondaryContainer,
+                        content = scheme.onSecondaryContainer
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(R.string.alarm_mute_button), style = MaterialTheme.typography.titleLarge)
+                // The confirmation that ends the alarm.
+                Button(
+                    onClick = onTaken,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Dimens.AlarmPrimaryMinHeight),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = scheme.tertiary,
+                        contentColor = scheme.onTertiary
+                    )
+                ) {
+                    Icon(Icons.Filled.Check, contentDescription = null)
+                    Spacer(Modifier.width(Dimens.SpaceS))
+                    Text(
+                        stringResource(R.string.alarm_take_button),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+
+                if (!muted) {
+                    Spacer(Modifier.height(Dimens.SpaceL))
+                    OutlinedButton(
+                        onClick = onMute,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Dimens.AlarmSecondaryMinHeight),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = scheme.onBackground)
+                    ) {
+                        Text(
+                            stringResource(R.string.alarm_mute_button),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(Dimens.SpaceM))
+
+                Text(
+                    text = stringResource(R.string.alarm_footer),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
             }
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = stringResource(R.string.alarm_footer),
-            style = MaterialTheme.typography.bodyMedium,
-            color = scheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
     }
 }

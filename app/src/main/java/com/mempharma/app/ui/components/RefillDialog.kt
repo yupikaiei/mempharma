@@ -3,7 +3,7 @@ package com.mempharma.app.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -26,6 +26,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mempharma.app.R
 import com.mempharma.app.data.local.entity.Medication
+import com.mempharma.app.ui.theme.Dimens
+import com.mempharma.app.util.unitLabelFor
 
 /**
  * Amount pre-filled the very first time a medicine is refilled, before the
@@ -68,14 +70,18 @@ fun RefillDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "${stringResource(R.string.common_refill)} ${med.name}",
+                text = stringResource(R.string.refill_title, med.name),
                 style = MaterialTheme.typography.headlineSmall
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    text = stringResource(R.string.refill_stock_line, med.quantity, med.unitLabel),
+                    text = stringResource(
+                        R.string.refill_stock_line,
+                        med.quantity,
+                        unitLabelFor(med.unitLabel, med.quantity)
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = scheme.onSurfaceVariant
                 )
@@ -91,7 +97,7 @@ fun RefillDialog(
                         onClick = { amountText = (amount - 1).coerceAtLeast(1).toString() },
                         modifier = Modifier
                             .width(72.dp)
-                            .height(56.dp)
+                            .heightIn(min = Dimens.MinTouchTarget)
                     ) {
                         Text("−", style = MaterialTheme.typography.headlineSmall)
                     }
@@ -107,13 +113,17 @@ fun RefillDialog(
                         onClick = { amountText = (amount + 1).toString() },
                         modifier = Modifier
                             .width(72.dp)
-                            .height(56.dp)
+                            .heightIn(min = Dimens.MinTouchTarget)
                     ) {
                         Text("+", style = MaterialTheme.typography.headlineSmall)
                     }
                 }
                 Text(
-                    text = stringResource(R.string.refill_new_total, newTotal, med.unitLabel),
+                    text = stringResource(
+                        R.string.refill_new_total,
+                        newTotal,
+                        unitLabelFor(med.unitLabel, newTotal)
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     color = scheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -124,7 +134,7 @@ fun RefillDialog(
             Button(
                 onClick = { onConfirm(amount) },
                 enabled = amount >= 1,
-                modifier = Modifier.height(56.dp)
+                modifier = Modifier.heightIn(min = Dimens.ControlMinHeight)
             ) {
                 Text(stringResource(R.string.refill_add), style = MaterialTheme.typography.titleMedium)
             }
@@ -132,7 +142,7 @@ fun RefillDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.height(56.dp)
+                modifier = Modifier.heightIn(min = Dimens.ControlMinHeight)
             ) {
                 Text(stringResource(R.string.common_cancel), style = MaterialTheme.typography.titleMedium)
             }

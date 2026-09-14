@@ -12,6 +12,7 @@ import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.data.settings.withAppLanguage
 import com.mempharma.app.domain.SmsReminderState
 import com.mempharma.app.domain.SmsTrigger
+import com.mempharma.app.util.unitLabelFor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -144,7 +145,21 @@ class SmsAlertManager @Inject constructor(
         if (sender.send(
                 context,
                 number,
-                SmsTrigger.buildMessage(med, stage, patientName, SmsTexts.templates(context))
+                SmsTrigger.buildMessage(
+                    // Give the medicine the properly agreed noun ("5 comprimidos",
+                    // never "5 comprimido(s)") without teaching the pure domain
+                    // rules anything about resources or plurals.
+                    med.copy(
+                        unitLabel = unitLabelFor(
+                            context.withAppLanguage(),
+                            med.unitLabel,
+                            med.quantity
+                        )
+                    ),
+                    stage,
+                    patientName,
+                    SmsTexts.templates(context)
+                )
             )
         ) {
             repository.upsertReminder(SmsReminderState(med.id, stage, now))

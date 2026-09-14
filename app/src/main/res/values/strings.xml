@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Portuguese (Portugal) — the app's default language. This is the fallback for
      every phone whose language is not English, unless a language is pinned in
-     Settings (English lives in values-en). -->
+     Settings (English lives in values-en).
+
+     Copy rules for this file (please keep them when editing):
+       • Never write "comprimido(s)". Use the `unit_pill` plurals below — the
+         stored default label in `unit_pill_default` is only a marker that
+         `util/Units.kt` swaps for the right singular/plural at render time.
+       • Quote with “ ” (never straight \" quotes) so it reads like Portuguese
+         typography and stays consistent across screens.
+       • Errors are instructions ("Indique…"), never a repeat of the field label.
+       • One term per concept: "idioma" (not "língua"), "toma" for a dose.
+       • Impersonal, calm voice — no "nós"/"podemos" first person.
+       • Keep labels on narrow controls short; long text is what gets clipped. -->
 <resources>
     <string name="app_name">MemPharma</string>
 
@@ -9,7 +20,7 @@
     <string name="common_cancel">Cancelar</string>
     <string name="common_delete">Eliminar</string>
     <string name="common_refill">Reabastecer</string>
-    <string name="common_add_medicine">Adicionar um medicamento</string>
+    <string name="common_add_medicine">Adicionar medicamento</string>
     <string name="common_back">Voltar</string>
     <string name="common_change">Alterar</string>
     <string name="common_remove">Remover</string>
@@ -17,11 +28,22 @@
     <string name="common_preview">Ouvir</string>
     <string name="common_save_number">Guardar número</string>
     <string name="common_choose_contact">Escolher contacto</string>
-    <string name="common_type_number_instead">Escrever um número</string>
+    <string name="common_type_number_instead">Escrever o número</string>
     <string name="common_share_medicine_history">Partilhar histórico de medicamentos</string>
     <string name="common_dose_detail">%1$d %2$s • %3$s</string>
-    <string name="unit_pill_default">comprimido(s)</string>
-    <string name="refill_stock_line">%1$d %2$s no frasco.</string>
+
+    <!-- The noun for one/several pills. Kept out of the sentences above and
+         swapped in by util/Units.kt so it always agrees with the number. -->
+    <plurals name="unit_pill">
+        <item quantity="one">comprimido</item>
+        <item quantity="other">comprimidos</item>
+    </plurals>
+    <!-- Marker stored on a medicine that was never given a custom unit name.
+         Never shown directly to the person — see util/Units.kt. -->
+    <string name="unit_pill_default">comprimidos</string>
+
+    <string name="refill_title">Reabastecer %1$s</string>
+    <string name="refill_stock_line">Restam %1$d %2$s no frasco.</string>
     <string name="refill_how_many">Quantos está a adicionar?</string>
     <string name="refill_new_total">Novo total: %1$d %2$s</string>
     <string name="refill_add">Adicionar ao frasco</string>
@@ -37,19 +59,19 @@
     <string name="home_greeting_afternoon">Boa tarde</string>
     <string name="home_greeting_evening">Boa noite</string>
     <string name="home_empty_title">Ainda não há medicamentos</string>
-    <string name="home_empty_subtitle">Adicione o seu primeiro medicamento e nós avisamos quando o deve tomar.</string>
-    <string name="home_stock_out">0 restantes — reabastecer</string>
-    <string name="home_stock_low">Restam apenas %1$d</string>
+    <string name="home_empty_subtitle">Adicione o primeiro medicamento e avisamos quando o deve tomar.</string>
+    <string name="home_stock_out">Acabou — reabastecer</string>
+    <string name="home_stock_low">Restam apenas %1$d %2$s</string>
     <string name="home_stock_normal">%1$d %2$s</string>
     <string name="home_due_now">Toma agora — %1$s</string>
     <string name="home_next_dose">Próxima toma: %1$s</string>
-    <string name="home_take">✓ Já tomei</string>
+    <string name="home_take">Já tomei</string>
     <string name="home_not_now">Agora não</string>
-    <string name="home_all_done">Tudo feito hoje ✓</string>
+    <string name="home_all_done">Tudo feito hoje</string>
     <string name="home_no_reminder">Não há lembretes agendados para hoje.</string>
     <plurals name="home_doses_due">
-        <item quantity="one">1 toma está a horas. Tome-a e toque em \"Já tomei\".</item>
-        <item quantity="other">Estão %1$d tomas a horas. Tome-as e toque em \"Já tomei\".</item>
+        <item quantity="one">Tem 1 toma por fazer. Tome-a e toque em “Já tomei”.</item>
+        <item quantity="other">Tem %1$d tomas por fazer. Tome-as e toque em “Já tomei”.</item>
     </plurals>
 
     <!-- Medicines list -->
@@ -58,14 +80,14 @@
         <item quantity="one">1 medicamento</item>
         <item quantity="other">%1$d medicamentos</item>
     </plurals>
-    <string name="meds_empty">Ainda não há nada aqui.\nToque em \"Adicionar um medicamento\" para começar.</string>
-    <string name="meds_stock_out">0 restantes</string>
-    <string name="meds_stock_low">Restam apenas %1$d</string>
-    <string name="meds_stock_normal">%1$d restantes</string>
+    <string name="meds_empty">Ainda não há nada aqui.\nToque em “Adicionar medicamento” para começar.</string>
+    <string name="meds_stock_out">Acabou</string>
+    <string name="meds_stock_low">Restam apenas %1$d %2$s</string>
+    <string name="meds_stock_normal">Restam %1$d %2$s</string>
 
     <!-- Add / edit medicine -->
     <string name="edit_title_edit">Editar medicamento</string>
-    <string name="edit_title_add">Adicionar um medicamento</string>
+    <string name="edit_title_add">Adicionar medicamento</string>
     <string name="edit_label_name">Nome do medicamento</string>
     <string name="edit_placeholder_name">ex.: Comprimido da tensão</string>
     <string name="edit_label_dose">Quantos comprimidos de cada vez?</string>
@@ -74,6 +96,8 @@
     <string name="edit_label_low_stock">Enviar mensagem ao familiar quando restarem estes</string>
     <string name="edit_low_stock_hint">Também é enviada uma mensagem se o medicamento acabar por completo. Isto só acontece quando os alertas por mensagem estão ligados nas Definições.</string>
     <string name="edit_label_color">Escolha uma cor para este medicamento</string>
+    <!-- Read out by screen readers for each colour swatch. -->
+    <string name="edit_color_option">Cor %1$d</string>
     <string name="edit_label_schedule">Quando o devemos avisar?</string>
     <string name="edit_schedule_hint">Toque nas horas a que toma este medicamento.</string>
     <string name="edit_add_time">Adicionar outra hora</string>
@@ -87,22 +111,22 @@
     <string name="edit_preset_night">Noite</string>
     <string name="edit_error_name">Escreva o nome do medicamento.</string>
     <string name="edit_error_times">Escolha pelo menos uma hora de lembrete.</string>
-    <string name="edit_error_dose">Quantos comprimidos de cada vez?</string>
-    <string name="edit_error_stock">Quantos comprimidos há no frasco?</string>
+    <string name="edit_error_dose">Indique quantos comprimidos toma de cada vez.</string>
+    <string name="edit_error_stock">Indique quantos comprimidos tem no frasco.</string>
 
     <!-- History -->
     <string name="history_title">Histórico</string>
     <string name="history_subtitle">Cada ação é registada neste dispositivo</string>
     <string name="history_export">Exportar histórico</string>
-    <string name="history_empty">Ainda não há registos.\nToque em \"Já tomei\" ou \"Agora não\" num lembrete e o registo aparece aqui.</string>
+    <string name="history_empty">Ainda não há registos.\nToque em “Já tomei” ou “Agora não” num lembrete e o registo aparece aqui.</string>
     <string name="history_filter_all">Tudo</string>
     <string name="history_filter_taken">Tomado</string>
     <string name="history_filter_muted">Silenciado</string>
-    <string name="history_filter_missed">Em falta</string>
+    <string name="history_filter_missed">Não tomado</string>
     <string name="history_filter_refills">Reabastecimentos</string>
     <string name="history_action_taken">Tomado</string>
     <string name="history_action_muted">Silenciado</string>
-    <string name="history_action_missed">Em falta</string>
+    <string name="history_action_missed">Não tomado</string>
     <string name="history_action_refill">Reabastecimento</string>
     <string name="history_due">• previsto para %1$s</string>
     <string name="history_unknown_medicine">Desconhecido</string>
@@ -120,7 +144,7 @@
     <string name="settings_font_large">Grande</string>
     <string name="settings_font_extra">Muito grande</string>
     <string name="settings_language_title">Idioma</string>
-    <string name="settings_language_subtitle">Escolha a língua da aplicação.</string>
+    <string name="settings_language_subtitle">Escolha o idioma da aplicação.</string>
     <string name="settings_language_system">Igual ao telemóvel</string>
     <!-- Shown in their own language, so they are never translated. -->
     <string name="settings_language_portuguese" translatable="false">Português</string>
@@ -129,36 +153,37 @@
     <string name="settings_about_version">MemPharma • versão %1$s</string>
     <string name="settings_about_privacy">Tudo é guardado apenas neste dispositivo. Não é necessária qualquer conta e nada é enviado para a internet.</string>
     <string name="settings_reminders_title">Lembretes e alertas</string>
-    <string name="settings_notifications_on">Notificações: ligadas ✓</string>
+    <string name="settings_notifications_on">Notificações ligadas</string>
     <string name="settings_notifications_off">As notificações estão desligadas — não é possível mostrar alertas.</string>
     <string name="settings_allow_notifications">Permitir notificações</string>
-    <string name="settings_precise_on">Lembretes precisos: ligados ✓</string>
+    <string name="settings_precise_on">Lembretes precisos ligados</string>
     <string name="settings_precise_off">Os lembretes precisos estão desligados. Os lembretes podem atrasar-se — permita-os, por favor.</string>
     <string name="settings_allow_precise">Permitir lembretes precisos</string>
+    <string name="settings_dnd_on">O alarme toca em “Não perturbe”</string>
+    <string name="settings_dnd_off">O alarme não interrompe o modo “Não perturbe”. Permita o acesso, por favor.</string>
+    <string name="settings_allow_dnd">Permitir acesso a “Não perturbe”</string>
     <string name="settings_fullscreen_hint">Para que os lembretes ocupem o ecrã inteiro, ative as “Notificações de ecrã inteiro” para a aplicação MemPharma nas definições do sistema.</string>
-    <string name="settings_open_notification_settings">Abrir definições de notificações</string>
+    <string name="settings_open_notification_settings">Abrir definições</string>
     <string name="settings_alert_sound_title">Som do alerta</string>
     <string name="settings_alert_sound_subtitle">O som que toca quando é hora de tomar um medicamento.</string>
     <string name="settings_alert_sound_current">Atual: %1$s</string>
     <string name="settings_choose_sound">Escolher som</string>
     <string name="settings_sound_default">Predefinido (alarme do sistema)</string>
-    <string name="settings_sound_silent">Silencioso</string>
     <string name="settings_sound_custom">Som personalizado</string>
-    <string name="settings_silent_hint">Silencioso: os lembretes continuam a vibrar e mostram o alerta de ecrã inteiro.</string>
     <string name="settings_sms_title">Enviar mensagem a um familiar</string>
-    <string name="settings_sms_subtitle">Podemos enviar uma mensagem a alguém quando um medicamento está quase a acabar ou acabou, para que possa ir buscar mais. Repetimos a cada 3 dias até registar um reabastecimento.</string>
+    <string name="settings_sms_subtitle">Envia uma mensagem a alguém quando um medicamento está quase a acabar ou acabou, para que possa ir buscar mais. Repete a cada 3 dias até registar um reabastecimento.</string>
     <string name="settings_sms_patient_name">Nome do doente (opcional)</string>
     <string name="settings_sms_patient_placeholder">ex.: João</string>
     <string name="settings_sms_patient_support">Usado na mensagem, por exemplo “Paracetamol de João”.</string>
     <string name="settings_sms_send_toggle">Enviar mensagens de reabastecimento</string>
-    <string name="settings_sms_allowed">Envio de mensagens: permitido ✓</string>
+    <string name="settings_sms_allowed">Envio de mensagens permitido</string>
     <string name="settings_sms_permission_needed">A aplicação MemPharma precisa de permissão para enviar mensagens. Nada é enviado até permitir.</string>
-    <string name="settings_sms_allow">Permitir o envio de mensagens</string>
+    <string name="settings_sms_allow">Permitir envio</string>
     <string name="settings_sms_sending_to">A enviar para:</string>
     <string name="settings_sms_preview_caption">O que dirá uma mensagem quando um medicamento estiver quase a acabar:</string>
-    <string name="settings_sms_test_button">Enviar uma mensagem de teste</string>
+    <string name="settings_sms_test_button">Enviar mensagem de teste</string>
     <string name="settings_sms_number_placeholder">ex.: 912 345 678</string>
-    <string name="settings_sms_result_sent">Mensagem de teste enviada ✓</string>
+    <string name="settings_sms_result_sent">Mensagem de teste enviada</string>
     <string name="settings_sms_result_no_contact">Escolha primeiro um contacto.</string>
     <string name="settings_sms_result_no_permission">Permita primeiro o envio de mensagens.</string>
     <string name="settings_sms_result_failed">O telemóvel não conseguiu enviar a mensagem. Verifique o sinal e tente novamente.</string>
@@ -173,33 +198,38 @@
     <string name="alarm_take_generic">Está na hora de tomar o seu medicamento</string>
     <string name="alarm_scheduled_at">Agendado para as %1$s</string>
     <string name="alarm_muted_pill">Lembrete silenciado — toque abaixo quando o tomar</string>
-    <string name="alarm_take_button">✓  Já tomei</string>
-    <string name="alarm_mute_button">Agora não (parar o som)</string>
-    <string name="alarm_footer">Este alerta permanece até confirmar que o medicamento foi tomado.</string>
+    <string name="alarm_take_button">Já tomei</string>
+    <string name="alarm_mute_button">Agora não</string>
+    <string name="alarm_footer">Este alerta permanece até confirmar que o medicamento foi tomado. “Agora não” só para o som.</string>
 
     <!-- Notifications -->
     <string name="notif_channel_reminders_name">Lembretes de medicamentos</string>
     <string name="notif_channel_reminders_desc">Alertas quando é hora de tomar o medicamento</string>
-    <string name="notif_dose_title">%1$s — está na hora</string>
+    <!-- Notification titles are single-line, so the medicine name gets the title
+         and the "it is time" cue goes in the sub-text, where nothing truncates. -->
+    <string name="notif_dose_title">%1$s</string>
+    <string name="notif_dose_subtext">Está na hora</string>
     <string name="notif_dose_text">Tome %1$d %2$s</string>
-    <string name="notif_dose_bigtext">Tome %1$d %2$s. Toque em \"Já tomei\" quando terminar, ou em \"Agora não\" para parar este lembrete.</string>
+    <string name="notif_dose_bigtext">Tome %1$d %2$s. Toque em “Já tomei” quando terminar, ou em “Agora não” para parar este lembrete.</string>
+    <!-- Kept with the tick: notification actions are drawn by the system font,
+         and Android does not allow custom icons on action buttons. -->
     <string name="notif_action_taken">✓  Já tomei</string>
     <string name="notif_action_mute">Agora não</string>
     <string name="notif_sms_channel_name">Problemas com mensagens de reabastecimento</string>
     <string name="notif_sms_channel_desc">Problemas ao enviar mensagens de reabastecimento ao familiar</string>
     <string name="notif_sms_blocked_title">Mensagem de reabastecimento não enviada</string>
-    <string name="notif_sms_blocked_text">Abra a aplicação MemPharma e permita o envio de mensagens, para que o seu familiar possa ser avisado quando um medicamento estiver a acabar.</string>
+    <string name="notif_sms_blocked_text">Abra a aplicação MemPharma e permita o envio de mensagens, para que o familiar possa ser avisado quando um medicamento estiver a acabar.</string>
 
     <!-- Audit-log notes (stored with each event) -->
     <string name="track_note_taken">Tomou %1$d %2$s</string>
     <string name="track_note_muted">Lembrete silenciado — não tomado</string>
-    <string name="track_note_missed">Toma em falta</string>
+    <string name="track_note_missed">Dose não tomada</string>
     <string name="track_note_refill">Adicionou %1$d %2$s</string>
 
     <!-- Texts sent to the chosen family member -->
     <string name="sms_message_out">MemPharma: %1$s acabou. Por favor, providencie um reabastecimento.</string>
     <string name="sms_message_low">MemPharma: %1$s está quase a acabar — restam apenas %2$d %3$s. Por favor, providencie um reabastecimento.</string>
-    <string name="sms_test_message">Mensagem de teste da MemPharma: os alertas de reabastecimento de %1$s que estiverem a acabar chegarão aqui.</string>
+    <string name="sms_test_message">Mensagem de teste da MemPharma: aqui chegarão os alertas de reabastecimento de %1$s.</string>
     <string name="sms_test_noun">medicamentos</string>
     <string name="sms_possessive">%2$s de %1$s</string>
     <string name="sms_possessive_ending_s">%2$s de %1$s</string>
@@ -214,6 +244,6 @@
     <string name="export_unknown_medicine">Desconhecido (id %1$d)</string>
     <string name="export_action_taken">Tomado</string>
     <string name="export_action_muted">Silenciado (não tomado)</string>
-    <string name="export_action_missed">Em falta</string>
+    <string name="export_action_missed">Não tomado</string>
     <string name="export_action_refill">Reabastecimento</string>
 </resources>

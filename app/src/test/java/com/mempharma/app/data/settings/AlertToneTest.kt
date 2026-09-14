@@ -18,8 +18,10 @@ class AlertToneTest {
     }
 
     @Test
-    fun silentSentinel_isSilent() {
-        assertEquals(AlertTone.Silent, parseAlertTone(ALERT_SILENT))
+    fun legacySilentSentinel_fallsBackToSystemDefault() {
+        // Older installs could choose "Silent"; reminders now always ring (like the
+        // phone's own alarm), so that stored value reads back as the default tone.
+        assertEquals(AlertTone.SystemDefault, parseAlertTone(LEGACY_ALERT_SILENT))
     }
 
     @Test

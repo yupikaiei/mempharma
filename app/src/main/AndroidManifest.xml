@@ -30,6 +30,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
+    <!-- Medicine reminders behave like the phone's own alarm, including in
+         Do Not Disturb. Letting the alert interrupt DND needs this special
+         "Do Not Disturb access", which the person grants from the reminders card
+         in Settings. Without it the reminder still rings (alarm audio stream) but
+         the alert may stay hidden while DND is on. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
     <application
         android:name=".MemPharmaApp"
         android:allowBackup="true"

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.mempharma.app.MainActivity
 import com.mempharma.app.data.local.dao.MedicationDao
 import com.mempharma.app.data.local.entity.Medication
 import com.mempharma.app.domain.DoseEngine
@@ -34,6 +35,11 @@ class AlarmSchedulerImpl @Inject constructor(
     private val alarmManager: AlarmManager
         get() = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
+    private companion object {
+        /** Request code for the "open the app" intent behind the system alarm icon. */
+        const val SHOW_INTENT_REQUEST_CODE = 9001
+    }
+
     private fun canScheduleExact(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 
@@ -49,6 +55,19 @@ class AlarmSchedulerImpl @Inject constructor(
             .setAction(AlarmActions.ACTION_REMINDER)
             .putExtra(AlarmActions.EXTRA_MED_ID, medId)
             .putExtra(AlarmActions.EXTRA_OCCURRENCE, occurrence)
+
+    /**
+     * Intent the system opens when the person taps the alarm icon it shows in the
+     * status bar for a `setAlarmClock` alarm. Built once and reused for every slot.
+     */
+    private val alarmClockShowIntent: PendingIntent by lazy {
+        PendingIntent.getActivity(
+            context,
+            SHOW_INTENT_REQUEST_CODE,
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     override fun scheduleMedication(med: Medication, zone: ZoneId) {
         if (!med.active || med.isOut) {
@@ -66,8 +85,16 @@ class AlarmSchedulerImpl @Inject constructor(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             if (canScheduleExact()) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, occurrence, pi)
+                // `setAlarmClock` is what the phone's own Clock uses: the system shows
+                // its alarm icon, treats it as a user-visible alarm (so it is exempt
+                // from Doze) and allows starting the ringer foreground service from the
+                // background without the extra "blocked start" fallback.
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(occurrence, alarmClockShowIntent),
+                    pi
+                )
             } else {
+                // No exact-alarm permission: degrade to an inexact alarm, as documented.
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, occurrence, pi)
             }
         }

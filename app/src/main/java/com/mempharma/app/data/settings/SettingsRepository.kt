@@ -36,8 +36,8 @@ class SettingsRepository @Inject constructor(
         .map { it[KEY_FONT_SCALE] ?: FONT_STANDARD }
 
     /**
-     * Raw alert-sound choice: blank for the system default alarm, [ALERT_SILENT]
-     * for no tone, otherwise the picked sound's URI. Feed it to [parseAlertTone].
+     * Raw alert-sound choice: blank for the system default alarm, otherwise the
+     * picked sound's URI. Feed it to [parseAlertTone].
      */
     val alertRingtone: Flow<String> = context.dataStore.data
         .map { it[KEY_ALERT_RINGTONE] ?: "" }
